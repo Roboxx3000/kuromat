@@ -313,6 +313,25 @@ kbd{font-family:var(--body);font-size:10px;border:1.5px solid currentColor;borde
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* Kuromat na GitHub Pages: rebríček cez Firebase namiesto databázy artifactu */
+(function(){
+  if(window.claude||typeof firebase==='undefined')return;
+  try{
+    firebase.initializeApp({"apiKey": "AIzaSyCnAjnEdnFYoA5TB9jDvGX_1ewK1mK1ph0", "authDomain": "kuromat.firebaseapp.com", "projectId": "kuromat", "storageBucket": "kuromat.firebasestorage.app", "messagingSenderId": "189100291245", "appId": "1:189100291245:web:649dccb69635e263d38224"});
+    const prihlasenie=firebase.auth().signInAnonymously().then(r=>r.user.uid);
+    prihlasenie.catch(()=>{});
+    const sluzby={
+      user:{id:()=>prihlasenie,me:async()=>({name:''})},
+      db:firebase.firestore()
+    };
+    window.claude={use:async co=>{if(co==='db')await prihlasenie;return sluzby[co]}};
+  }catch(e){}
+})();
+</script>
 <script>
 (()=>{
 "use strict";
@@ -1343,7 +1362,7 @@ function renderBoards(){
     else if(LB_TAB==='m'){a.textContent='Rebríček mesiaca';b.textContent=MES[+TODAY.slice(5,7)-1]+' '+TODAY.slice(0,4)}
     else{a.textContent='Dnešný rebríček';b.textContent=new Date(TODAY+'T12:00').toLocaleDateString('sk-SK')}
     h.append(a,b);el.append(h,tabs);
-    if(CLOUD.state!=='ok'){const p=document.createElement('div');p.className='lbempty';p.textContent=CLOUD.state==='loading'?'Načítavam rebríček…':CLOUD.state==='slow'?'Rebríček sa zatiaľ nedá načítať. Skús to o chvíľu.':'Rebríček funguje, keď hru otvoríš prihlásený v Claude cez zdieľaný odkaz. Teraz hráš len pre seba.';el.appendChild(p);
+    if(CLOUD.state!=='ok'){const p=document.createElement('div');p.className='lbempty';p.textContent=CLOUD.state==='loading'?'Načítavam rebríček…':CLOUD.state==='slow'?'Rebríček sa zatiaľ nedá načítať. Skús to o chvíľu.':(window.claude?'Rebríček sa teraz nedá pripojiť.':'Rebríček funguje, keď hru otvoríš prihlásený v Claude cez zdieľaný odkaz.')+' Teraz hráš len pre seba.';el.appendChild(p);
       const lb=localBest();if(lb){const q=document.createElement('div');q.className='lbempty';q.textContent=`Tvoje dnešné maximum: ${lb}`;el.appendChild(q)}continue}
     const rows=LB_TAB==='w'?rangeRows(WEEK0,WEEK1):LB_TAB==='m'?rangeRows(MONTH0,TODAY):dayRows(TODAY);
     if(!rows.length){const p=document.createElement('div');p.className='lbempty';p.textContent=LB_TAB==='d'?'Dnes ešte nikto nehral. Buď prvý kuromatér.':LB_TAB==='w'?'Tento týždeň ešte nikto nehral.':'Tento mesiac ešte nikto nehral.';el.appendChild(p)}
