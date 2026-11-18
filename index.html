@@ -5,7 +5,7 @@
 <title>Kuromat</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&family=Baloo+2:wght@500;700;800&display=swap">
 <style>
 /* Layout: jedna obrazovka bez scrollu – hlavička, vľavo scéna + rada, vpravo pult; dole starostlivosť a dielňa. Jeden pevný kreslený vzhľad. */
 :root{
@@ -35,6 +35,9 @@ kbd{font-family:var(--body);font-size:10px;border:1.5px solid currentColor;borde
 /* hlavička */
 .top{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:5px 12px}
 .logo{font-family:var(--display);font-size:22px;color:var(--ketchup);-webkit-text-stroke:1.5px var(--ink);text-shadow:2px 2px 0 var(--ink)}
+.logo s{text-decoration-color:#C8261A;text-decoration-thickness:4px;opacity:.75}
+.logo .graf.gold{color:#FFD84A}.logo .graf.red{color:#FF5A3C}
+.logo .graf{display:inline-block;margin-left:8px;font-family:"Permanent Marker",cursive;font-size:21px;color:#F4ECD8;-webkit-text-stroke:0;text-shadow:2px 2px 0 var(--ink);transform:rotate(-5deg)}
 .clock{display:flex;align-items:center;gap:8px;flex:1 1 160px;min-width:0}
 .clock b{font-family:var(--display);font-weight:400;font-size:19px;font-variant-numeric:tabular-nums}
 .bar{height:10px;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden}
@@ -308,7 +311,7 @@ kbd{font-family:var(--body);font-size:10px;border:1.5px solid currentColor;borde
 <div class="overlay" id="pauseOv" hidden>
   <div class="card box" style="max-width:360px;text-align:center">
     <h1 class="biglogo" style="font-size:40px">Pauza</h1>
-    <p class="tag">Sliepky čakajú. Zákazníci tiež.</p>
+    <p class="tag" id="pauseTag">Sliepky čakajú. Zákazníci tiež.</p>
     <button class="go" id="btnResume">Pokračovať</button>
   </div>
 </div>
@@ -379,6 +382,11 @@ const CT={
  vladka:{icon:'🍗',label:'kura',price:9,pat:[28,34],want:[1,1],faces:['💁‍♀️'],names:['Vľaďka'],sub:'ponáhľa sa'},
  casnicka:{icon:'🍗',label:'kurčatá pre Spirit',price:10,pat:[45,50],want:[5,5],faces:['👩‍🦰'],names:['Čašníčka'],sub:'zo Spiritu, berie po 5'},
  moment:{icon:'🥚',label:'vajce',price:.6,pat:[50,60],want:[1,1],faces:['⏳'],names:['Pán Moment'],sub:'na kura nemá'},
+ // v6.32 Potkaní bufet (po 3. slepačej svetovej vojne)
+ p_rat:{icon:'🐀',label:'pečený potkan',price:7,pat:[30,40],want:[1,2],faces:['😷','🥽','💀','🧟'],names:['Tulák s vozíkom','Pani s plynovou maskou','Strážca kanála','Zberač šrotu','Mutant z predmestia','Sused z bunkra']},
+ p_ragu:{icon:'🍲',label:'potkanie ragú',price:5,pat:[38,46],want:[3,3],faces:['🫕'],names:['Rodina z krytu'],sub:'berú tri naraz'},
+ p_can:{icon:'🐀',label:'pečený potkan',price:0,pat:[34,42],want:[1,1],faces:['🧔'],names:['Starec s konzervou'],sub:'platí konzervou fazule'},
+ p_hnoj:{icon:'💩',label:'vrece hnoja',price:4.5,pat:[44,54],want:[1,2],faces:['🧑‍🌾'],names:['Záhradník z ruín'],sub:'pestuje v rádioaktívnej pôde'},
 };
 const HEN_NAMES=['Božena','Kvetka','Hedviga','Zdenka','Ľudmila','Agáta','Pipka','Ruženka','Matilda','Gertrúda','Bohuslava','Jarmila','Oľga','Terézia','Vierka','Darinka','Hermína','Kleopatra','Anča','Etela','Florentína','Gizela','Hilda','Irma','Johana','Kornélia','Libuša','Milada','Otília','Sidónia','Valéria','Žofia'];
 const LEVELS=[
@@ -387,7 +395,7 @@ const LEVELS=[
  {name:'Hydraulický lis',cost:40,time:1.5,dirt:6,tip:.10,desc:'Bum. Kuracia palacinka. +10 % tringelt.'},
  {name:'Humánny teleportér',cost:75,time:.7,dirt:0,tip:.25,desc:'Sliepka zmizne v trblietkach. +25 % tringelt.'},
 ];
-const CHICK=new Set(['kura','pecho','direktor','kofola','simon','vecernik','hado','miro','fetak','vladka','casnicka']), EGGS=new Set(['vajca','zobrak','moment']);
+const CHICK=new Set(['kura','pecho','direktor','kofola','simon','vecernik','hado','miro','fetak','vladka','casnicka','p_rat','p_ragu','p_can']), EGGS=new Set(['vajca','zobrak','moment']);
 // kto zje aj kura z ohrievača (zvyšky po Večerníkovi a Vľaďke)
 const SPARE_OK=new Set(['kura','pecho','direktor','fetak','casnicka']);
 const KIND={simon:'shake',kofola:'crispy',hado:'rezen',vecernik:'bones',miro:'leg'};
@@ -572,7 +580,7 @@ function addRep(d){S.rep=clamp(S.rep+d,0,5)}
 function buyFeed(auto){const p=feedPrice();if(S.cash<p||S.feed>95)return false;S.cash-=p;S.feed=Math.min(100,S.feed+30);if(!auto)sfx.click();return true}
 function buyWater(auto){if(S.cash<.5||S.water>95)return false;S.cash-=.5;S.water=Math.min(100,S.water+40);if(!auto)sfx.click();return true}
 function bagManure(auto){if(S.manure<25)return false;if(!auto&&S.bioMess){S.bioMess=false;if(S.baler)toast('Linka je odpchatá, ďalej balí sama.','good')}S.manure-=25;S.bags++;if(!auto)sfx.pop();S.flags.manureFull=false;return true}
-function incubate(){if(S.eggs<1)return false;const i=S.inc.findIndex(x=>x===null);if(i<0)return false;S.eggs--;S.inc[i]=0;sfx.pop();return true}
+function incubate(){if(S.eggs<1||isPost())return false;const i=S.inc.findIndex(x=>x===null);if(i<0)return false;S.eggs--;S.inc[i]=0;sfx.pop();return true}
 function clean(){if(S.wipe>=0||(S.dirt<1&&S.pultPoop<1))return false;S.wipe=0;S.pultPoop=0;sfx.click();return true}
 const isFed=()=>S.feed>0&&S.water>0&&S.manure<100&&S.flood<.3;
 function doAction(){const a=S.actions.shift();if(!a)return;
@@ -626,9 +634,13 @@ function pay(c,fx,fy){
   else if(c.type==='vladka'){toast('Vľaďka zaplatila a už je preč. Kura pôjde do ohrievača.','good')}
   else if(c.type==='casnicka'){S.stats.spirit+=c.want;addRep(.15);toast(`Čašníčka odnáša päť kurčiat. V Spirite z nich bude ${fmt(24.5*c.want)}.`,'good')}
   else if(c.type==='moment'){addRep(.05);toast('Pán Moment si kúpil aspoň vajce. Na kura vraj o moment.','good')}
+  else if(c.type==='p_can'){S.feed=Math.min(100,S.feed+40);S.water=Math.min(100,S.water+20);addRep(.05);toast('Starec platí konzervou fazule. Potkany majú krmivo aj vodu navyše.','good')}
+  else if(c.type==='p_ragu'){addRep(.1);toast('Rodina z krytu odnáša ragú pre celý bunker.','good')}
+  else if(c.type==='p_hnoj'){addRep(.05);toast('Záhradník z ruín: „Hnoj je hnoj, aj po konci sveta.“','good')}
+  else if(c.type==='p_rat'){addRep(.05);toast(`${c.name}: „${pickArr(Math.random,['Chutí ako kura. Teda ako si ho pamätám.','Konečne niečo teplé.','Za toto by som dal aj poslednú batériu.','Chrumká to. Beriem.','Lepšie ako konzerva spred vojny.'])}“`,'good')}
   else{addRep((c.acceptRatio??0)>.5?.07:.03);
     if(c.type==='vajca')toast(`${c.name}: „${pickArr(Math.random,EGG_LINES)}“`,'good')}
-  sfx.coin();floater(fx,fy,'+'+fmt(amt));
+  sfx.coin();floater(fx,fy,c.type==='p_can'?'+🥫':'+'+fmt(amt));
 }
 function buyUpgrade(kind){
   if(kind==='machine'){const n=LEVELS[S.lvl+1];if(!n||S.cash<n.cost)return;S.cash-=n.cost;S.lvl++;sfx.fanfare();
@@ -717,11 +729,11 @@ function update(dt){
     const dx=h.tx-h.x,dy=h.ty-h.y,d=Math.hypot(dx,dy);
     if(d<3){if(Math.random()<dt*.8){h.tx=80+Math.random()*290;h.ty=222+Math.random()*98}}
     else{const sp=(fed?34:14)*dt;h.x+=dx/d*sp;h.y+=dy/d*sp;h.flip=dx<0}
-    if(fed){h.eggT+=dt;if(h.eggT>=(h.buff?BUFF[h.buff].egg:10)){h.eggT=0;if(S.eggs<12){S.eggs++;h.hop=.3;if(Math.random()<.3)sfx.cackle(.07);S.particles.push({k:'egg',x:h.x,y:h.y+10,vx:0,vy:-60,life:.6,t:0})}else if(!S.flags.trayFull){S.flags.trayFull=true;toast('Podnos na vajíčka je plný.')}}}
+    if(fed&&!h.rat){h.eggT+=dt;if(h.eggT>=(h.buff?BUFF[h.buff].egg:10)){h.eggT=0;if(S.eggs<12){S.eggs++;h.hop=.3;if(Math.random()<.3)sfx.cackle(.07);S.particles.push({k:'egg',x:h.x,y:h.y+10,vx:0,vy:-60,life:.6,t:0})}else if(!S.flags.trayFull){S.flags.trayFull=true;toast('Podnos na vajíčka je plný.')}}}
     h.hop=Math.max(0,h.hop-dt);
   }
   if(S.eggs<12)S.flags.trayFull=false;
-  if(n&&Math.random()<dt*.12)sfx.cluck(.05);
+  if(n&&!isPost()&&Math.random()<dt*.12)sfx.cluck(.05);
   // liaheň
   for(let i=0;i<S.inc.length;i++){if(S.inc[i]===null)continue;S.inc[i]=Math.min(15,S.inc[i]+dt);
     if(S.inc[i]>=15&&S.hens.length+0<S.cap){S.inc[i]=null;const used=new Set(S.hens.map(h=>h.name));const nm=pickArr(Math.random,HEN_NAMES.filter(x=>!used.has(x)))||'Sliepka';const h=newHen(nm,90+i*45,140);if(breed())h.buff=breed();h.tx=150+Math.random()*200;h.ty=260;h.newT=2;S.hens.push(h);S.stats.hatched++;sfx.hatch();toast(h.buff?`Vyliahla sa ${nm}. ${h.buff===3?'Oceľová od prvej sekundy.':'Svaly má po mame.'}`:`Vyliahla sa ${nm}. Vitaj v Kuromate.`)}}
@@ -761,8 +773,8 @@ function update(dt){
   for(const f of S.floaters)f.t+=dt;S.floaters=S.floaters.filter(f=>f.t<1.4);
   for(const s of S.splats)s.t+=dt;S.splats=S.splats.filter(s=>s.t<1.6);
   S.shake=Math.max(0,S.shake-dt*2.5);
-  if(S.t>=DAY)endDay();
-  else if(!S.hens.length&&!S.eggs&&!S.jobs.length&&!S.escape&&S.inc.every(x=>x===null))endDay('Došli sliepky aj vajíčka. Kuromat zatvoril skôr.');
+  if(S.t>=(S.dayEnd||DAY))endDay();
+  else if(!isPost()&&!S.hens.length&&!S.eggs&&!S.jobs.length&&!S.escape&&S.inc.every(x=>x===null))endDay('Došli sliepky aj vajíčka. Kuromat zatvoril skôr.');
 }
 
 // dynamický zákazník: vloží sa pred ďalší príchod, aby ho slučka hneď spracovala
@@ -1021,7 +1033,7 @@ function draw(now){
     c.fillStyle='rgba(60,30,10,.28)';c.fillRect(-36,18,78,97);c.drawImage(KING,-38,14,76,95);c.strokeStyle=INK;c.lineWidth=1.5;c.strokeRect(-38,14,76,95);
     rr(c,-32,111,64,13,3);c.fillStyle=lin(c,0,111,0,124,['#F3D67A','#B98A2E']);c.fill();c.strokeStyle=INK;c.lineWidth=1.2;c.stroke();
     c.fillStyle=INK;c.font='6.5px Bungee, Impact, sans-serif';c.textAlign='center';c.fillText('KRÁĽ KUROMATU',0,120.5);c.restore()}
-  c.fillStyle=INK;c.font='12px Bungee, Impact, sans-serif';c.fillText(`SLIEPKY ${S.hens.length}/${S.cap}`,325,70);c.textAlign='left';
+  c.fillStyle=INK;c.font='12px Bungee, Impact, sans-serif';c.fillText(`${isPost()?'POTKANY':isPrev()?'OBČIANKY':'SLIEPKY'} ${S.hens.length}/${S.cap}`,325,70);c.textAlign='left';
   // liaheň
   const lw=48+S.incSlots*44;rr(c,38,44,lw,84,10);c.fillStyle=lin(c,0,44,0,128,['#F6E2B3','#D9B97A']);c.fill();c.lineWidth=2.5;c.strokeStyle=INK;c.stroke();
   c.fillStyle='#8A5A2B';c.fillRect(42,48,lw-8,16);c.fillStyle='#FFE9B8';c.font='11px Bungee, Impact, sans-serif';c.fillText('LIAHEŇ',48,61);
@@ -1213,18 +1225,18 @@ let uiAcc=0;
 function starStr(r){const f=Math.round(r);return '★'.repeat(f)+'☆'.repeat(5-f)}
 function ui(force){
   if(!S)return;
-  const hh=hourAt(Math.min(S.t,DAY));const h=Math.floor(hh),m=Math.floor((hh-h)*60);
+  const hh=hourAt(Math.min(S.t,S.dayEnd||DAY));const h=Math.floor(hh),m=Math.floor((hh-h)*60);
   $('#hClock').textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
-  $('#hBar').style.width=(S.t/DAY*100)+'%';
+  $('#hBar').style.width=Math.min(100,S.t/(S.dayEnd||DAY)*100)+'%';
   $('#hCash').textContent=fmt(S.cash);$('#hStars').textContent=starStr(S.rep);
   const setM=(id,v,txt)=>{$('#'+id).style.width=clamp(v,0,100)+'%';$('#'+id+'V').textContent=txt};
   setM('mFeed',S.feed,Math.round(S.feed)+'/100');setM('mWater',S.water,Math.round(S.water)+'/100');setM('mMan',S.manure,Math.round(S.manure)+'/100');setM('mDirt',S.dirt,Math.round(S.dirt)+' %');setM('mEgg',S.eggs/12*100,S.eggs+'/12');
   const st=[`🐔 Sliepky ${S.hens.length}/${S.cap}`,`🛍️ Vrecia hnoja ${S.bags}`,`🐣 V liahni ${S.inc.filter(x=>x!==null).length}/${S.incSlots}`];
-  $('#aBagS').textContent=`25 → 1 vrece · máš ${S.bags}`;$('#aIncS').textContent=S.hens.length>=S.cap?'kurín je plný':`liaheň ${S.inc.filter(x=>x!==null).length}/${S.incSlots} · sliepka o 15 s`;
+  $('#aBagS').textContent=`25 → 1 vrece · máš ${S.bags}`;$('#aIncS').textContent=isPost()?'potkany sa množia samy':S.hens.length>=S.cap?'kurín je plný':`liaheň ${S.inc.filter(x=>x!==null).length}/${S.incSlots} · sliepka o 15 s`;
   $('#hHens').textContent=`${S.hens.length}/${S.cap}`;$('#hBags').textContent=S.bags;
   $('#aFeedS').textContent='+30 · '+fmt(feedPrice());
   $('#aFeed').disabled=S.cash<feedPrice()||S.feed>95;$('#aWater').disabled=S.cash<.5||S.water>95;
-  $('#aBag').disabled=S.manure<25;$('#aInc').disabled=S.eggs<1||!S.inc.includes(null);$('#aClean').disabled=(S.dirt<1&&S.pultPoop<1)||S.wipe>=0;renderPoop();
+  $('#aBag').disabled=S.manure<25;$('#aInc').disabled=S.eggs<1||!S.inc.includes(null)||isPost();$('#aClean').disabled=(S.dirt<1&&S.pultPoop<1)||S.wipe>=0;renderPoop();
   $('#aFeed').classList.toggle('hot',S.feed<20);$('#aWater').classList.toggle('hot',S.water<20);$('#aBag').classList.toggle('hot',S.manure>=75);$('#aClean').classList.toggle('hot',S.dirt>=50||S.pultPoop>20);
   renderShop();renderQueue();renderHint();
 }
@@ -1233,7 +1245,7 @@ function renderPoop(){const n=Math.min(16,Math.ceil(S.pultPoop/6));if(n===poopN)
   for(let i=0;i<n;i++){const d=document.createElement('span');d.className='poo';const a=(i*97)%100,b=(i*53+17)%100;d.style.left=a+'%';d.style.top=(8+b*.85)+'%';d.style.fontSize=(28+(i*13)%30)+'px';d.textContent='💩';L.appendChild(d)}}
 function whyNot(c){
   if(c.type==='miro'&&(S.dirt>=MIRO_DIRT||S.pultPoop>5))return 'Miro chce čisté sklo. Uprac';
-  if(isChick(c)){const m=hensNeeded(c)-S.hens.length;return m===1?'Chýba 1 sliepka':`Chýbajú ${m} sliepky`}
+  if(isChick(c)){const m=hensNeeded(c)-S.hens.length;if(isPost())return m===1?'Chýba 1 potkan':`Chýbajú ${m} potkany`;return m===1?'Chýba 1 sliepka':`Chýbajú ${m} sliepky`}
   if(isEggs(c))return `Treba ${c.want} vajec, máš ${S.eggs}`;
   return S.manure>=25?'Najprv zabaľ hnoj do vreca':`Treba ${c.want} vrecia, máš ${S.bags}`;
 }
@@ -1241,12 +1253,17 @@ let hintEl=null;
 function renderHint(){
   const w=S.cust.filter(c=>c.state==='waiting');const elOf=c=>custEls.get(c.id)?.querySelector('.serve');
   if(hintEl&&!hintEl.isConnected)hintEl=null;
-  let txt='Všetko beží. Sleduj pult a čakaj na zákazníkov.',el=null,warn=false;
+  let txt=isPost()?'Potkany sa množia samy. Predávaj ich skôr, ako sa premnožia a zožerú zásoby.':isRaj()?'Celý svet chce do Kuracieho raja. VIP hostia nečakajú dlho a Michelin sleduje.':isPrev()?'Generálka Oceľka rozkazuje. Plň rozkazy a predávaj zrno občiankam.':'Všetko beží. Sleduj pult a čakaj na zákazníkov.',el=null,warn=false;
   const pecho=w.find(c=>c.type==='pecho');
   const servable=w.find(c=>canServe(c));
   const freeInc=S.inc.includes(null)&&S.hens.length<S.cap;
   if(pecho&&!canServe(pecho)){txt=S.eggs&&freeInc?'Maťo čaká a chýbajú sliepky! Daj vajce do liahne.':'Maťo čaká na 2 kurčatá, ale nemáš 2 sliepky. Rýchlo liahni.';el=S.eggs&&freeInc?$('#aInc'):null;warn=true}
   else if(S.bioMess&&S.baler&&S.manure>=25){txt='Biofeedback upchal baliacu linku! Zabaľ vrece ručne, potom bude baliť sama.';el=$('#aBag');warn=true}
+  else if(isPost()&&S.hens.length===1&&!servable){txt='Posledný potkan! Jeden sa sám nerozmnoží. Z kanála čoskoro vylezie ďalší.';warn=true}
+  else if(isPost()&&S.hens.length>S.cap){txt=`Premnoženie! ${S.hens.length} potkanov žerie zásoby a špiní pult. Predávaj rýchlejšie.`;warn=true}
+  else if(isRaj()&&w.some(c=>c.type==='r_insp'&&!canServe(c))){txt='Nenápadný pán s notesom čaká a nemáš sliepku! Ak odíde, Kurací raj príde o hviezdu.';el=S.eggs&&freeInc?$('#aInc'):null;warn=true}
+  else if(isRaj()&&S.hens.length<3&&S.eggs&&freeInc){txt='Sliepky odchádzajú do kúpeľov. Liahni nové, VIP hostia čakajú.';el=$('#aInc');warn=true}
+  else if(isPrev()&&w.some(c=>c.type==='v_zrno'&&!canServe(c))){txt='Občianky chcú zrno, ale koryto je takmer prázdne. Kúp krmivo.';el=$('#aFeed');warn=true}
   else if(S.manure>=100){txt='Hnoj vyteká na okienko aj pult! Zabaľ vrece.';el=$('#aBag');warn=true}
   else if(S.flood>.3){txt='Kurín je zatopený, sliepky plávajú a neznášajú.';warn=true}
   else if(S.escape){txt=`${S.escape.hen.name} uteká dole po scéne! Klikni na ňu.`;warn=true}
@@ -1266,7 +1283,7 @@ function renderHint(){
   if(bannerT>0){txt=bannerTxt;warn=true}
   if(S.inspector>0){txt='🧐 Inšpektor práve kontroluje automat.';warn=true}
   const a=S.actions[0];const hb=$('#hintBtn');
-  if(a){txt=`${a.text} Zostáva ${Math.ceil(a.dur-a.t)} s.`;warn=true;hb.hidden=false;hb.textContent=a.label}else hb.hidden=true;
+  if(a){txt=a.kind==='lever'?a.text:`${a.text} Zostáva ${Math.ceil(a.dur-a.t)} s.`;warn=true;hb.hidden=false;hb.textContent=a.label}else hb.hidden=true;
   $('#hintT').textContent=txt;$('#hint').classList.toggle('warn',warn);$('#hint').classList.toggle('alarm',bannerT>0||!!a);
   if(hintEl!==el){hintEl&&hintEl.classList.remove('pulse');el&&el.classList.add('pulse');hintEl=el}
 }
@@ -1331,6 +1348,431 @@ $('#btnPause').onclick=()=>setPaused(!paused);$('#btnResume').onclick=()=>setPau
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)setPaused(true)});
 const muteBtn=$('#btnMute');const setMuteIcon=()=>muteBtn.textContent=SND.muted?'🔇':'🔊';setMuteIcon();
 muteBtn.onclick=()=>{SND.muted=!SND.muted;lsSet('kuromat-mute',SND.muted?'1':'0');setMuteIcon()};
+
+/* ---------- v6.32: 3. slepačia svetová vojna → Potkaní bufet ----------
+   Príde od 16:00 herného času (najneskôr do 17:30), ak má hráč všetko vymaxované a všetky sliepky sú Terminátorky.
+   Intro ~10,6 s (hra stojí), potom sa sliepky zmenia na potkany, ktoré sa množia samy, a smena sa predĺži o WAR_EXTRA s. */
+const WAR_FROM=tAt(16), WAR_TO=tAt(17.5), WAR_EXTRA=180, RAT_CAP=12, RAT_MAX=24;
+const RAT_NAMES=['Kanálka','Fúzatka','Šedivka','Hryzka','Pišťalka','Chvostka','Bunkerka','Radka','Mutantka','Šrotka','Popolka','Žmurka','Krysa Hela','Prašivka','Sliedička','Ohlodka','Tunelka','Zubaňa','Hrdzavka','Myška Mira','Plesnivka','Smetiarka','Dierka','Sutinka'];
+const APO_W={p_rat:52,p_ragu:16,p_can:16,p_hnoj:16};
+const ASH=[];for(let i=0;i<70;i++)ASH.push({x:Math.random()*W,y:Math.random()*H,v:8+Math.random()*18,r:1+Math.random()*2.2,p:Math.random()*6});
+const isPost=()=>!!(S&&S.apoc&&S.apoc.post);
+function warReady(){return S.lvl===3&&S.capLvl===3&&S.incSlots===3&&S.autoFeed&&S.baler&&breed()===3&&S.hens.length>0&&S.hens.every(h=>h.buff===3)}
+function boom(){try{noise(2.2,.35,180,0);noise(1.2,.25,900,0);tone(55,1.8,'sawtooth',.12);tone(38,2.4,'sine',.18,0,.1)}catch(e){}}
+function squeak(){tone(2300+Math.random()*600,.07,'sine',.035,3300)}
+function startWar(){
+  S.apoc={t0:performance.now(),intro:true,post:false,boomed:false,converted:false,chick0:S.stats.chicken,hens0:S.hens.length,next:1.5,breed:0,wild:0,over:false,rng:mulberry32(seedOf('kuromat-potkany-'+TODAY))};
+  S.ai={n:2,next:null,warn:false,lasers:[]};
+  S.dayEnd=DAY+WAR_EXTRA;clearNews();bannerT=0;sfx.alarm();
+}
+// výbuch: kurín zmizne, zostanú potkany
+function apocConvert(){
+  const A=S.apoc;A.converted=true;
+  for(const c of S.cust)if(c.state==='waiting'||c.state==='cooking'||c.state==='pending')c.state='gone';
+  S.ci=S.cust.length;S.ei=DAYD.ev.length;
+  S.jobs=[];S.spare=0;S.eggs=0;S.inc=S.inc.map(()=>null);S.escape=null;S.rain=null;S.flood=0;S.power=null;S.spirit=null;S.stink=null;S.stinkIn=0;S.actions=[];S.bioMess=false;S.inspector=0;
+  S.particles=[];S.splats=[];
+  S.cap=RAT_CAP;S.hens=[];
+  for(let i=0;i<6;i++)S.hens.push(newRat());
+  S.feed=Math.max(S.feed,60);S.water=Math.max(S.water,60);
+}
+function newRat(){const used=new Set(S.hens.map(h=>h.name));const nm=pickArr(Math.random,RAT_NAMES.filter(x=>!used.has(x)))||'Potkan';
+  const h=newHen(nm);h.rat=true;h.tx=h.x;h.ty=h.y;return h}
+function spawnApo(){const A=S.apoc,r=A.rng;const type=pickW(r,APO_W),ct=CT[type];
+  const want=ct.want[0]+Math.floor(r()*(ct.want[1]-ct.want[0]+1));const max=ct.pat[0]+r()*(ct.pat[1]-ct.pat[0]);
+  S.cust.splice(S.ci,0,{id:S.dynId++,type,t:S.t,name:pickArr(r,ct.names),face:pickArr(r,ct.faces),want,pay:Math.round(ct.price*want*100)/100,max,pat:max,state:'pending',done:0})}
+function updatePost(dt){
+  const A=S.apoc,n=S.hens.length;
+  // zákazníci z ruín
+  A.next-=dt;if(A.next<=0){A.next=2.6+A.rng()*2.2;spawnApo()}
+  // potkany sa množia samy, keď majú krmivo aj vodu
+  if(isFed()&&n>=2&&n<RAT_MAX){A.breed+=dt*.05*n;if(A.breed>=1){A.breed=0;const h=newRat();h.x=h.tx=60+Math.random()*60;h.y=h.ty=330+Math.random()*30;h.newT=2;S.hens.push(h);squeak();
+    if(Math.random()<.35)toast(pickArr(Math.random,[`Narodila sa ${h.name}. Nikto ju nečakal.`,`${h.name} prišla na svet. Rovno hladná.`,'Ďalší potkan. Kto to počíta?']))}}
+  // z kanála vylezie divoký potkan, keď sú takmer vyhynuté
+  if(n<2){A.wild+=dt;if(A.wild>=8){A.wild=0;S.hens.push(newRat());squeak();toast('Z kanála vyliezol divoký potkan. Bufet žije ďalej.')}}else A.wild=0;
+  // premnoženie: žerú zásoby a špinia pult
+  const over=n-S.cap;
+  if(over>0){S.feed=Math.max(0,S.feed-.25*over*dt);S.water=Math.max(0,S.water-.2*over*dt);S.pultPoop=Math.min(100,S.pultPoop+.9*over*dt);S.dirt=Math.min(100,S.dirt+.35*over*dt);
+    if(!A.over){A.over=true;sfx.bad();toast(`Premnoženie! ${n} potkanov žerie zásoby a lezie po pulte.`,'bad')}}
+  else A.over=false;
+  if(n&&Math.random()<dt*.15)squeak();
+}
+{const _upd=update;update=function(dt){
+  if(S.apoc&&S.apoc.intro)return; // počas intra hra stojí
+  _upd(dt);
+  if(running&&isPost())updatePost(dt);
+}}
+{const _dh=drawHen;drawHen=function(c,x,y,s=1,flip=false,ph=0,o={}){if(isPost())return drawRat(c,x,y,s,flip,ph,o);return _dh(c,x,y,s,flip,ph,o)}}
+function drawRat(c,x,y,s,flip,ph,o){
+  c.save();c.translate(x,y+9-(o.hop||0)*16);c.scale(flip?-s:s,s);if(o.rot)c.rotate(o.rot);c.globalAlpha=o.alpha??1;
+  c.lineCap='round';c.lineJoin='round';const w=Math.sin(ph*1.7)*4;
+  c.strokeStyle='#C98C8C';c.lineWidth=3;c.beginPath();c.moveTo(-15,5);c.bezierCurveTo(-28,8+w,-34,-8-w,-44,-4+w);c.stroke();
+  c.strokeStyle=INK;c.lineWidth=1;c.stroke();
+  c.fillStyle='#E2A3A3';for(const lx of [-9,7]){c.beginPath();c.ellipse(lx+Math.sin(ph)*2,12,4,2.5,0,0,7);c.fill()}
+  c.fillStyle=lin(c,0,-10,0,14,['#9C968E','#5E5852']);c.strokeStyle=INK;c.lineWidth=2.5;c.beginPath();c.ellipse(0,2,19,12,0,0,7);c.fill();c.stroke();
+  c.strokeStyle='rgba(40,30,25,.45)';c.lineWidth=1.2;for(const [a,b] of [[-8,-6],[-2,-8],[4,-7]]){c.beginPath();c.moveTo(a,b);c.lineTo(a+3,b+4);c.stroke()}
+  c.fillStyle=lin(c,0,-12,0,8,['#A8A29A','#6A645E']);c.strokeStyle=INK;c.lineWidth=2.5;c.beginPath();c.moveTo(8,-8);c.quadraticCurveTo(24,-10,30,0);c.quadraticCurveTo(22,7,9,6);c.closePath();c.fill();c.stroke();
+  c.fillStyle='#F08CA0';c.beginPath();c.arc(30,0,2.6,0,7);c.fill();
+  c.fillStyle='#8E8780';c.beginPath();c.arc(11,-11,6,0,7);c.fill();c.stroke();c.fillStyle='#E9A3AE';c.beginPath();c.arc(11,-11,3.2,0,7);c.fill();
+  if(o.scared){c.fillStyle='#FFF';c.beginPath();c.arc(19,-4,3.4,0,7);c.fill();c.strokeStyle=INK;c.lineWidth=1;c.stroke()}
+  c.fillStyle=INK;c.beginPath();c.arc(19,-4,2,0,7);c.fill();
+  c.strokeStyle='rgba(30,20,15,.7)';c.lineWidth=.9;for(const d of [-3,0,3]){c.beginPath();c.moveTo(27,1);c.lineTo(37,1+d*1.6);c.stroke()}
+  c.restore();
+}
+function bumpyEll(c,x,y,rx,ry,n,amp,T,a0=0,a1=Math.PI*2,start=true){
+  for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n,px=x+Math.cos(a)*rx,py=y+Math.sin(a)*ry;
+    if(i===0){start?c.moveTo(px,py):c.lineTo(px,py);continue}
+    const m=a-(a1-a0)/n/2,w=1+amp*(1+.25*Math.sin(T*3+i*1.7));c.quadraticCurveTo(x+Math.cos(m)*rx*w,y+Math.sin(m)*ry*w,px,py)}}
+function fill2(c,g1,g2,heat){c.fillStyle=g1;c.fill();if(heat<1){c.globalAlpha=1-heat;c.fillStyle=g2;c.fill();c.globalAlpha=1}}
+function mushroom(c,k,T){
+  const gx=480,gy=428,e=1-Math.pow(1-k,2.2),top=gy-50-e*270,capR=55+e*125,heat=Math.max(0,1-k*.6);
+  c.fillStyle=lin(c,0,0,0,H,['rgba(110,20,0,.88)','rgba(240,100,20,.78)','rgba(255,190,80,.72)']);c.fillRect(0,0,W,H);
+  c.globalCompositeOperation='lighter';c.fillStyle=rad(c,gx,top,0,capR*2.6,[`rgba(255,220,140,${.6*heat+.15})`,'rgba(255,90,20,.22)','rgba(255,60,0,0)']);c.fillRect(0,0,W,H);c.globalCompositeOperation='source-over';
+  c.lineJoin='round';c.strokeStyle=INK;c.lineWidth=3.5;
+  const sb=gy-5,st=top+capR*.35,n=7;c.beginPath();
+  for(let i=0;i<=n;i++){const f=i/n,y=sb-(sb-st)*f,w=(26+e*18)*(1.5-f*.75);const px=gx-w+Math.sin(T*2+i)*3;if(i===0)c.moveTo(px,y);else{const pm=sb-(sb-st)*(f-.5/n);c.quadraticCurveTo(px-10,pm,px,y)}}
+  for(let i=n;i>=0;i--){const f=i/n,y=sb-(sb-st)*f,w=(26+e*18)*(1.5-f*.75);const px=gx+w+Math.sin(T*2+i+2)*3;const pm=sb-(sb-st)*(f+.5/n);if(i===n)c.lineTo(px,y);else c.quadraticCurveTo(px+10,pm,px,y)}
+  c.closePath();fill2(c,lin(c,0,st,0,sb,['#FFD25A','#F07A22','#A8401A']),lin(c,0,st,0,sb,['#8A7466','#5E4A40','#3E2E28']),heat);c.stroke();
+  c.strokeStyle='rgba(255,240,180,.45)';c.lineWidth=3;c.beginPath();for(let i=1;i<6;i++){const y=sb-(sb-st)*i/6;c.moveTo(gx-12,y+Math.sin(T*3+i)*3);c.quadraticCurveTo(gx,y-6,gx+12,y+Math.cos(T*3+i)*3)}c.stroke();
+  c.strokeStyle=`rgba(255,225,180,${.4+.3*e})`;c.lineWidth=6;c.beginPath();c.ellipse(gx,top+capR*1.05,capR*.8,capR*.13,0,0,7);c.stroke();
+  c.strokeStyle=INK;c.lineWidth=3.5;c.beginPath();bumpyEll(c,gx,gy+8,150+e*340,34+e*16,22,.22,T,Math.PI,Math.PI*2);c.closePath();
+  fill2(c,lin(c,0,gy-50,0,gy,['#C98A5A','#7A4A2E']),lin(c,0,gy-50,0,gy,['#8E7C70','#4E3E34']),heat*.6);c.stroke();
+  c.beginPath();bumpyEll(c,gx,top,capR,capR*.62,16,.2,T);c.closePath();
+  fill2(c,lin(c,0,top-capR*.7,0,top+capR*.7,['#7A2A12','#E8641C','#FFC24A','#FFF0B0']),lin(c,0,top-capR*.7,0,top+capR*.7,['#3E2E28','#6E5A4E','#9A8476','#B8A698']),heat);c.stroke();
+  c.strokeStyle=`rgba(255,${200+40*heat|0},${120+60*heat|0},.55)`;c.lineWidth=3;
+  for(const [dx,dy,r] of [[-.45,.05,.28],[.45,.05,.28],[0,-.15,.32],[-.2,.3,.2],[.22,.3,.2]]){const a=T*2.2+dx*4;c.beginPath();c.arc(gx+dx*capR,top+dy*capR,r*capR,a,a+Math.PI*1.3);c.stroke()}
+  c.globalCompositeOperation='lighter';c.fillStyle=rad(c,gx,top+capR*.2,0,capR*.6,[`rgba(255,250,210,${.75*heat})`,`rgba(255,160,40,${.35*heat})`,'rgba(255,80,0,0)']);c.beginPath();c.arc(gx,top+capR*.2,capR*.6,0,7);c.fill();c.globalCompositeOperation='source-over';
+}
+function fireball(c,k){const r=30+k*170;c.globalCompositeOperation='lighter';c.fillStyle=rad(c,480,400,0,r,['rgba(255,255,255,1)','rgba(255,240,170,.95)','rgba(255,150,40,.6)','rgba(255,80,0,0)']);c.beginPath();c.arc(480,400,r,0,7);c.fill();c.globalCompositeOperation='source-over'}
+function bigText(c,txt,y,size,col,alpha=1,font='Bungee'){c.save();c.globalAlpha=alpha;c.font=`${size}px ${font}, Impact, sans-serif`;c.textAlign='center';c.lineWidth=size/5;c.strokeStyle='#1A0A05';c.strokeText(txt,W/2,y);c.fillStyle=col;c.fillText(txt,W/2,y);c.restore()}
+function postApo(c,T){
+  c.save();
+  c.globalCompositeOperation='multiply';c.fillStyle='#B08A60';c.fillRect(0,0,W,H);c.globalCompositeOperation='source-over';
+  c.fillStyle='rgba(60,35,15,.22)';c.fillRect(0,0,W,H);
+  c.strokeStyle='rgba(255,255,255,.55)';c.lineWidth=1.3;c.beginPath();
+  for(const [x0,y0,ls] of [[150,120,[[30,-40],[60,-35],[90,-70]]],[150,120,[[-40,30],[-55,80]]],[150,120,[[45,25],[70,70],[110,85]]],[420,300,[[-30,-45],[-45,-90]]],[420,300,[[40,-20],[95,-10]]]]){c.moveTo(x0,y0);for(const [dx,dy] of ls)c.lineTo(x0+dx,y0+dy)}
+  c.stroke();
+  rr(c,585,26,340,54,12);c.fillStyle='rgba(30,18,10,.55)';c.fill();
+  c.strokeStyle='#1A0A05';c.lineWidth=6;c.beginPath();c.moveTo(672,60);c.lineTo(712,52);c.lineTo(760,58);c.lineTo(840,47);c.stroke();
+  c.strokeStyle='#C8261A';c.lineWidth=3.5;c.beginPath();c.moveTo(670,58);c.lineTo(712,50);c.lineTo(760,56);c.lineTo(840,45);c.moveTo(676,44);c.lineTo(835,62);c.stroke();
+  c.save();c.translate(758,98);c.rotate(-.07);c.font='34px "Permanent Marker", "Comic Sans MS", cursive';c.textAlign='center';
+  c.lineWidth=7;c.strokeStyle='#1A0A05';c.strokeText('Potkaní bufet',0,0);c.fillStyle='#F4ECD8';c.fillText('Potkaní bufet',0,0);
+  c.fillStyle='#F4ECD8';for(const [dx,l] of [[-88,10],[-30,16],[22,8],[71,13]]){c.fillRect(dx,4,2.5,l);c.beginPath();c.arc(dx+1.2,4+l,2,0,7);c.fill()}
+  c.restore();
+  c.save();c.translate(486,52);c.rotate(.05);c.font='17px "Permanent Marker", cursive';c.textAlign='center';c.lineWidth=4;c.strokeStyle='#1A0A05';c.strokeText('POTKANY',0,6);c.fillStyle='#E8D8B0';c.fillText('POTKANY',0,6);c.restore();
+  c.fillStyle='rgba(200,190,175,.7)';for(const p of ASH){const y=(p.y+T*p.v)%H,x=(p.x+Math.sin(T+p.p)*12+W)%W;c.beginPath();c.arc(x,y,p.r,0,7);c.fill()}
+  c.fillStyle=rad(c,W/2,H/2,H*.35,W*.65,['rgba(0,0,0,0)','rgba(20,8,0,.55)']);c.fillRect(0,0,W,H);
+  c.restore();
+}
+function setWarLogo(on){const L=$('.logo');if(!L)return;
+  if(on){L.textContent='';const s=document.createElement('s');s.textContent='KUROMAT';const g=document.createElement('span');g.className='graf';g.textContent='Potkaní bufet';L.append(s,g);document.body.classList.add('apoc')}
+  else{L.textContent='KUROMAT';document.body.classList.remove('apoc','raj','prev')}
+  const pt=$('#pauseTag');if(pt)pt.textContent=on?'Potkany čakajú. Mutanti tiež.':'Sliepky čakajú. Zákazníci tiež.';
+  const hs=$('#hHens');if(hs&&hs.previousElementSibling)hs.previousElementSibling.textContent=on?'Potkany':'Sliepky'}
+{const _draw=draw;draw=function(now){
+  const A=S&&S.apoc;
+  if(!A){_draw(now);return}
+  const T=now/1000,c=cx;
+  if(!A.intro){_draw(now);if(A.post){postApo(c,T)}return}
+  const t=(performance.now()-A.t0)/1000;
+  S.shake=t<2?.15:t<2.3?0:t<5.5?Math.max(0,1.2-(t-2.3)*.35):0;
+  if(t<6||t>=9)_draw(now);
+  c.save();
+  if(t<2){
+    c.fillStyle=`rgba(255,20,10,${.26+.14*Math.sin(t*14)})`;c.fillRect(0,0,W,H);
+    const a=Math.min(1,t*3);bigText(c,'3. SLEPAČIA',170,44,'#FFD84A',a);bigText(c,'SVETOVÁ VOJNA',225,44,'#FFD84A',a);
+    bigText(c,'Terminátorky prevzali kontrolu nad kurínom',268,15,'#FFF3E0',a);
+  }else if(t<2.35){c.fillStyle='#FFFFFF';c.fillRect(0,0,W,H);if(!A.boomed){A.boomed=true;boom();apocConvert()}}
+  else if(t<6){
+    if(!A.boomed){A.boomed=true;apocConvert()}
+    mushroom(c,clamp((t-2.9)/2.3,0,1),T);
+    if(t<3.3)fireball(c,clamp((t-2.35)/.95,0,1)*(1-clamp((t-3.0)/.3,0,1)));
+    if(t<2.8){c.fillStyle=`rgba(255,255,255,${1-(t-2.35)/.45})`;c.fillRect(0,0,W,H)}
+    if(t>5.2){c.fillStyle=`rgba(0,0,0,${(t-5.2)/.8})`;c.fillRect(0,0,W,H)}
+  }else if(t<9){
+    if(!A.boomed){A.boomed=true;apocConvert()}
+    c.fillStyle='#000';c.fillRect(0,0,W,H);
+    ['Ticho.','Prach.','A potom… niečo zapišťalo.'].forEach((ln,i)=>{const a=clamp((t-6.4-i*.7)/.5,0,1);if(a>0)bigText(c,ln,175+i*42,i===2?22:26,'#BFB6A8',a*.9,'"Permanent Marker"')});
+    if(!A.sq&&t>8){A.sq=true;squeak();setTimeout(squeak,180)}
+  }else{
+    if(!A.post){A.post=true;setWarLogo(true)}
+    const a=Math.min(1,(t-9)/1.6);postApo(c,T);
+    c.fillStyle=`rgba(0,0,0,${1-a})`;c.fillRect(0,0,W,H);
+    if(t>10.6){A.intro=false;S.shake=0;showBanner('Potkaní bufet je otvorený. Svet padol, hlad nie.',5);toast(`Smena sa predlžuje. Potkany sa množia samy, predávaj ich skôr, ako sa premnožia.`)}
+  }
+  c.restore();
+}}
+
+
+/* ---------- v6.33: Automat osudu → vojna / Slepačí raj / Slepačí prevrat ----------
+   Pri splnení podmienok vojny (od 16:00, všetko vymaxované, všetky Terminátorky) vyskočí herný automat s jedným valcom.
+   Hráč potiahne páku (klik, tlačidlo alebo A; sama po 20 s), valec náhodne (Math.random, nie podľa dňa) určí koniec. */
+const FATES=[{k:'war',ico:'☢️',t:'VOJNA',big:'VOJNA!'},{k:'raj',ico:'🌈',t:'RAJ',big:'SLEPAČÍ RAJ!'},{k:'prev',ico:'✊',t:'PREVRAT',big:'SLEPAČÍ PREVRAT!'}];
+const FATE_EXTRA=180;
+const isRaj=()=>!!(S&&S.raj&&S.raj.post), isPrev=()=>!!(S&&S.prev&&S.prev.post);
+Object.assign(CT,{
+ // Slepačí raj
+ r_vip:{icon:'🍗',label:'kura pre VIP',price:22,pat:[20,28],want:[1,1],faces:['👩‍💼','🧑‍🚀','👳‍♂️','🤳','⚽','🎤'],names:['Prezidentka','Astronaut','Šejk','Influencerka','Futbalová hviezda','Operná diva']},
+ r_zlate:{icon:'🥚',label:'zlaté vajcia',price:4,pat:[22,30],want:[1,3],faces:['💎','🧐','👨‍🍳','🏛️'],names:['Zberateľka zlata','Klenotník','Šéfkuchár z Paríža','Kurátor múzea']},
+ r_zajazd:{icon:'🥚',label:'zlaté vajcia na suveníry',price:3.5,pat:[30,36],want:[5,5],faces:['📸'],names:['Turistický zájazd'],sub:'berú päť naraz'},
+ r_autogram:{icon:'✍️',label:'autogram sliepky',price:6,pat:[18,24],want:[1,1],faces:['🤩','🤩','🤩'],names:['Fanúšička','Fanúšik zo Žiliny','Zberateľ autogramov'],sub:'chce len podpis'},
+ r_insp:{icon:'🍗',label:'kura na ochutnávku',price:30,pat:[16,20],want:[1,1],faces:['🕵️'],names:['Nenápadný pán'],sub:'s notesom… Michelin?'},
+ // Slepačí prevrat
+ v_zrno:{icon:'🌾',label:'misky zrna',price:2.5,pat:[26,34],want:[1,3],faces:['🐔'],names:HEN_NAMES.map(n=>'Občianka '+n),sub:'sliepka, platí v eurách'},
+ v_vajce:{icon:'🥚',label:'štátne vajcia',price:.6,pat:[30,40],want:[3,5],faces:['👨','👩','🧓'],names:['Občan na prídel','Občianka s lístkami','Dôchodca v rade']},
+ v_hnoj:{icon:'💩',label:'vrece hnoja',price:4,pat:[34,44],want:[1,2],faces:['🧑‍🌾'],names:['Družstevník'],sub:'plní päťročnicu'},
+});
+['r_vip','r_insp'].forEach(k=>CHICK.add(k));['r_zlate','r_zajazd','v_vajce'].forEach(k=>EGGS.add(k));
+const RAJ_W={r_vip:34,r_zlate:26,r_zajazd:10,r_autogram:18}, PREV_W={v_zrno:44,v_vajce:34,v_hnoj:22};
+const ZRNO=8; // krmiva na jednu misku
+const ORDERS=[
+ {k:'o_salute',text:'Generálka Oceľka prechádza okolo. Zasalutuj!',label:'Zasalutovať',dur:5},
+ {k:'o_massage',text:'Generálka chce masáž hrebienka.',label:'Masírovať hrebienok',dur:7},
+ {k:'o_corn',text:'Generálka si objednala zlaté zrno. Z tvojho platu.',label:'Kúpiť zlaté zrno · 5 €',dur:10},
+ {k:'o_clean',text:'Generálka nestrpí špinu. Umy sklo aj pult.',label:'Umyť sklo',dur:9},
+ {k:'o_report',text:'Odovzdaj hlásenie o produktivite.',label:'Podpísať hlásenie',dur:6},
+ {k:'o_hymn',text:'Spievaj slepačiu hymnu! Všetci!',label:'Kot-kot-kodák!',dur:5},
+ {k:'o_feed',text:'Občianky sú hladné. Generálka žiada plné koryto.',label:'Nasypať krmivo · 3 €',dur:9}];
+const PRAISE=['Generálka Oceľka: „Vyhovuje.“','Generálka: „Pokračuj, človek.“','Generálka: „Zapíšem ti kladný bod. Jeden.“','Generálka: „Kot. To znamená dobre.“','Generálka prikývla. Skoro sa usmiala.'];
+
+function drum(){tone(72,.18,'square',.09,40);noise(.08,.12,500,0)}
+function calmWorld(){ // spoločné upratanie pri zmene sveta (ako pri vojne, ale sliepky ostávajú)
+  for(const c of S.cust)if(c.state==='waiting'||c.state==='cooking'||c.state==='pending')c.state='gone';
+  S.ci=S.cust.length;S.ei=DAYD.ev.length;
+  S.jobs=[];S.spare=0;S.escape=null;S.rain=null;S.flood=0;S.power=null;S.spirit=null;S.stink=null;S.stinkIn=0;S.actions=[];S.bioMess=false;S.inspector=0;
+  S.particles=[];S.splats=[];S.feed=Math.max(S.feed,60);S.water=Math.max(S.water,60)}
+const FUTBAL=['Lionel Messi','Cristiano Ronaldo','Kylian Mbappé','Erling Haaland','Neymar','Luka Modrić','Robert Lewandowski','Jude Bellingham','Mohamed Salah','Vinícius Júnior','Lamine Yamal','Marek Hamšík','Milan Škriniar','Stanislav Lobotka'];
+function spawnFrom(type){const ct=CT[type],r=Math.random;
+  const want=ct.want[0]+Math.floor(r()*(ct.want[1]-ct.want[0]+1));const max=ct.pat[0]+r()*(ct.pat[1]-ct.pat[0]);const ni=Math.floor(r()*ct.names.length);
+  const face=ct.faces.length===ct.names.length?ct.faces[ni]:pickArr(r,ct.faces);
+  let name=ct.names[ni];if(name==='Futbalová hviezda')name=pickArr(r,FUTBAL);
+  S.cust.splice(S.ci,0,{id:S.dynId++,type,t:S.t,name,foot:face==='⚽',face,want,pay:Math.round(ct.price*want*100)/100,max,pat:max,state:'pending',done:0})}
+
+/* --- automat osudu --- */
+function startSlot(){
+  S.fate={t0:performance.now(),pulled:0,pick:-1,pos:0,from:0,to:0,tick:0,stop:0,done:false};
+  S.ai={n:2,next:null,warn:false,lasers:[]};clearNews();bannerT=0;sfx.alarm();
+  S.actions=[];S.actions.push({kind:'lever',text:'Rozhodujúci moment! Potiahni páku automatu osudu.',label:'Potiahnuť páku',t:0,dur:999});
+}
+function pullLever(){const F=S.fate;if(!F||F.pulled||F.done)return;
+  F.pulled=performance.now();F.pick=Math.floor(Math.random()*3);F.from=F.pos;F.tick=Math.floor(F.pos);
+  const base=Math.ceil(F.pos)+15;F.to=base+((F.pick-base)%3+3)%3;
+  S.actions=S.actions.filter(a=>a.kind!=='lever');tone(160,.3,'square',.06,60)}
+function fateSfx(i){const k=FATES[i].k;if(k==='war')sfx.alarm();else if(k==='raj'){sfx.fanfare();setTimeout(()=>sfx.fanfare(),450)}else{drum();setTimeout(drum,250);setTimeout(drum,500)}}
+function launchFate(i){const k=FATES[i].k;S.fate.done=true;if(k==='war')startWar();else if(k==='raj')startRaj();else startPrev()}
+function drawSlot(c,now){
+  const F=S.fate,T=now/1000,e=(now-F.t0)/1000;
+  if(!F.pulled){const d=F.last?Math.min(.1,(now-F.last)/1000):0;F.last=now;if(running&&!paused)F.idle=(F.idle||0)+d;F.pos=e*1.6;if(F.idle>20){pullLever();toast('Páka sa potiahla sama. Osud nečaká.')}}
+  let lever=0;
+  if(F.pulled){const p=(now-F.pulled)/1000;lever=p<.3?p/.3:p<.9?1-(p-.3)/.6:0;
+    const s=p-.3,D=3.2;if(s>0){const k=Math.min(1,s/D);F.pos=F.from+(F.to-F.from)*(1-Math.pow(1-k,3));const fl=Math.floor(F.pos);if(fl!==F.tick){F.tick=fl;tone(1100+Math.random()*250,.03,'square',.025)}
+      if(k>=1&&!F.stop){F.stop=now;F.pos=F.to;fateSfx(F.pick)}}
+    if(F.stop&&now-F.stop>1900&&!F.done)launchFate(F.pick)}
+  c.save();c.fillStyle='rgba(12,6,2,.66)';c.fillRect(0,0,W,H);
+  const bx=345,by=30,bw=270,bh=372;
+  rr(c,bx,by,bw,bh,26);c.fillStyle=lin(c,0,by,0,by+bh,['#F0503A','#A8201A']);c.fill();c.strokeStyle=INK;c.lineWidth=4;c.stroke();
+  rr(c,bx+14,by+14,bw-28,62,16);c.fillStyle='#2A0E08';c.fill();c.lineWidth=3;c.stroke();
+  for(let i=0;i<12;i++){const x=bx+30+i*(bw-60)/11,on=(Math.floor(T*6)+i)%2;c.fillStyle=on?'#FFE680':'#6A4A18';for(const y of [by+24,by+66]){c.beginPath();c.arc(x,y,4,0,7);c.fill()}}
+  c.font='20px Bungee, Impact, sans-serif';c.textAlign='center';c.fillStyle='#FFD84A';c.fillText('AUTOMAT OSUDU',bx+bw/2,by+52);
+  const wx=bx+60,wy=by+98,ww=bw-120,wh=170,cy=wy+wh/2;
+  rr(c,wx-9,wy-9,ww+18,wh+18,18);c.fillStyle=lin(c,0,wy,0,wy+wh,['#FFE680','#C8961E']);c.fill();c.strokeStyle=INK;c.lineWidth=3;c.stroke();
+  c.save();rr(c,wx,wy,ww,wh,12);c.clip();c.fillStyle='#FFF8E6';c.fillRect(wx,wy,ww,wh);
+  const SH=118,b0=Math.floor(F.pos);c.textAlign='center';c.textBaseline='middle';
+  for(let i=b0-1;i<=b0+2;i++){const y=cy-(i-F.pos)*SH,f=FATES[((i%3)+3)%3];
+    c.font='62px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';c.fillStyle=INK;c.fillText(f.ico,wx+ww/2,y-12);
+    c.font='15px Bungee, Impact, sans-serif';c.fillText(f.t,wx+ww/2,y+40)}
+  c.textBaseline='alphabetic';
+  c.fillStyle=lin(c,0,wy,0,wy+wh,['rgba(0,0,0,.5)','rgba(0,0,0,0)','rgba(0,0,0,0)','rgba(0,0,0,.5)']);c.fillRect(wx,wy,ww,wh);c.restore();
+  rr(c,wx,wy,ww,wh,12);c.strokeStyle=INK;c.lineWidth=3;c.stroke();
+  c.fillStyle='#FFD84A';c.strokeStyle=INK;c.lineWidth=2.5;
+  for(const [x,d] of [[wx-12,1],[wx+ww+12,-1]]){c.beginPath();c.moveTo(x,cy);c.lineTo(x-14*d,cy-11);c.lineTo(x-14*d,cy+11);c.closePath();c.fill();c.stroke()}
+  rr(c,bx+40,by+bh-70,bw-80,40,12);c.fillStyle='#2A0E08';c.fill();c.stroke();
+  c.font='13px Bungee, Impact, sans-serif';c.fillStyle='#FFE680';c.fillText(F.stop?'Osud rozhodol':F.pulled?'Točí sa…':'Vložená: celá smena',bx+bw/2,by+bh-45);
+  // páka
+  const px=bx+bw+4,py=by+200;
+  rr(c,px-4,py-22,26,44,9);c.fillStyle=lin(c,0,py-22,0,py+22,['#9AA4AA','#5A646A']);c.fill();c.strokeStyle=INK;c.lineWidth=3;c.stroke();
+  const ex=px+12+16*Math.sin(lever*Math.PI),ey=py-118*Math.cos(lever*Math.PI);
+  c.lineCap='round';c.strokeStyle=INK;c.lineWidth=13;c.beginPath();c.moveTo(px+9,py);c.lineTo(ex,ey);c.stroke();
+  c.strokeStyle='#D8DDE2';c.lineWidth=8;c.beginPath();c.moveTo(px+9,py);c.lineTo(ex,ey);c.stroke();
+  c.fillStyle=rad(c,ex-5,ey-5,2,20,['#FF8A7A','#D8261A','#8A1008']);c.beginPath();c.arc(ex,ey,18,0,7);c.fill();c.strokeStyle=INK;c.lineWidth=3;c.stroke();
+  if(!F.pulled){const a=.55+.45*Math.sin(T*6);bigText(c,'Potiahni páku!',428,22,'#FFD84A',a);
+    c.fillStyle=`rgba(255,230,128,${.5+.5*Math.sin(T*6)})`;c.font='26px sans-serif';c.fillText('👈',ex+40,ey+8)}
+  else if(F.stop){const k=Math.min(1,(now-F.stop)/250);bigText(c,FATES[F.pick].big,430,26*k+4,'#FFD84A',1)}
+  bigText(c,'Všetko vymaxované. Teraz rozhodne osud.',22+0,14,'#FFF3E0',.9);
+  c.restore();
+}
+
+/* --- Slepačí raj --- */
+function startRaj(){
+  S.raj={t0:performance.now(),intro:true,post:false,conv:false,stars:3,next:1.2,retire:22,insp:24,retired:0,fallen:false,fw:[],lastFw:0};
+  S.dayEnd=DAY+FATE_EXTRA;clearNews();bannerT=0;sfx.fanfare();
+}
+function rajLogo(){const R=S.raj,g=$('.logo .graf');if(!g)return;g.textContent='👑 Kurací raj '+'★'.repeat(Math.max(0,R.stars))+'☆'.repeat(3-Math.max(0,R.stars));g.style.textDecoration=R.fallen?'line-through 3px #C8261A':''}
+function rajFall(){const R=S.raj;R.fallen=true;R.stars=0;rajLogo();sfx.powerDown();showBanner('Michelin odobral poslednú hviezdu. Kurací raj je zase len obyčajný Kuromat.',6);
+  toast('Hviezdu môžeš získať späť: obslúž ďalšieho nenápadného pána s notesom.','bad')}
+function updateRaj(dt){
+  const R=S.raj;
+  R.next-=dt;if(R.next<=0){R.next=2.3+Math.random()*1.9;spawnFrom(pickW(Math.random,RAJ_W))}
+  R.insp-=dt;if(R.insp<=0){R.insp=30+Math.random()*14;spawnFrom('r_insp');toast('Pri pulte stojí nenápadný pán s notesom. Nebude to inšpektor Michelin?')}
+  R.retire-=dt;if(R.retire<=0){R.retire=20+Math.random()*8;
+    if(S.hens.length>2){const h=S.hens.splice(Math.floor(Math.random()*S.hens.length),1)[0];R.retired++;
+      for(let k=0;k<5;k++)S.particles.push({k:'heart',x:h.x,y:h.y-20,vx:(Math.random()-.5)*60,vy:-50-Math.random()*40,life:1.2,t:0});
+      floater(h.x,h.y-20,'🧖 kúpele');
+      toast(pickArr(Math.random,[`${h.name} odchádza do kúpeľov na zaslúžený dôchodok.`,`${h.name} dala výpoveď. Ide na wellness.`,`${h.name} vyhrala zájazd k moru. Treba vyliahnuť náhradu.`]))}}
+  for(const c of S.cust)if(c.type==='r_insp'&&c.state==='left'&&!c.judged){c.judged=true;
+    if(!R.fallen){R.stars--;sfx.bad();if(R.stars<=0)rajFall();else{rajLogo();toast(`Odišiel inšpektor Michelin! Kurací raj prišiel o hviezdu. Zostávajú ${R.stars}.`,'bad')}}}
+}
+
+/* --- Slepačí prevrat --- */
+function startPrev(){
+  S.prev={t0:performance.now(),intro:true,post:false,conv:false,next:1.2,order:5,cur:null,lastK:'',done:0,warns:0,beat:0};
+  S.dayEnd=DAY+FATE_EXTRA;clearNews();bannerT=0;sfx.alarm();
+}
+function updatePrev(dt){
+  const P=S.prev;
+  P.next-=dt;if(P.next<=0){P.next=2.6+Math.random()*2;spawnFrom(pickW(Math.random,PREV_W))}
+  if(P.cur&&!P.cur.ok&&!S.actions.includes(P.cur)){P.cur.ok=true;P.warns++;addRep(-.3);sfx.bad();
+    if(P.warns>=3){endDay('Generálka Oceľka ťa prepustila. Tri napomenutia a dosť. Ochranka ťa vyprevadila z Kuromatu.');return}
+    toast(`Napomenutie ${P.warns} z 3: ${pickArr(Math.random,['rozkaz nesplnený.','Generálka sa mračí.','ešte raz a letíš.'])}`,'bad')}
+  if(!P.cur||P.cur.ok){P.order-=dt;if(P.order<=0){P.order=10+Math.random()*7;const o=pickArr(Math.random,ORDERS.filter(o=>o.k!==P.lastK));P.lastK=o.k;
+    P.cur={kind:o.k,text:o.text,label:o.label,t:0,dur:o.dur};S.actions.push(P.cur);drum()}}
+}
+function orderDone(a){const P=S.prev;P.done++;S.cash+=2;addRep(.08);sfx.coin();floater(480,150,'+2 € mzda');toast(pickArr(Math.random,PRAISE),'good')}
+
+/* --- obsluha nových zákazníkov --- */
+{const _cs=canServe;canServe=function(c){
+  if(c.type==='r_autogram')return c.state==='waiting'&&S.hens.length>0;
+  if(c.type==='v_zrno')return c.state==='waiting'&&S.feed>=ZRNO*c.want;
+  return _cs(c)}}
+{const _wn=whyNot;whyNot=function(c){
+  if(c.type==='r_autogram')return 'Nemáš sliepku na podpis';
+  if(c.type==='v_zrno')return `Málo krmiva na ${c.want} ${c.want===1?'misku':'misky'}`;
+  return _wn(c)}}
+{const _sv=serve;serve=function(c){
+  if(c.type==='r_autogram'||c.type==='v_zrno'){if(!canServe(c)){sfx.bad();return}c.acceptRatio=c.pat/c.max;
+    if(c.type==='v_zrno'){S.feed-=ZRNO*c.want;S.stats.corn=(S.stats.corn||0)+c.want;pay(c,240,330)}
+    else{const h=pickArr(Math.random,S.hens);h.hop=.4;c.hen=h.name;pay(c,h.x,h.y-30)}return}
+  _sv(c)}}
+{const _py=pay;pay=function(c,fx,fy){_py(c,fx,fy);const R=S.raj;
+  if(c.type==='r_insp'){c.judged=true;if(R.fallen){R.fallen=false;R.stars=1;rajLogo();sfx.fanfare();toast('Bol to inšpektor Michelin! Kurací raj má späť jednu hviezdu.','good')}
+    else if(R.stars<3){R.stars++;rajLogo();sfx.fanfare();toast('Bol to inšpektor Michelin! Vrátil Kuraciemu raju hviezdu.','good')}
+    else{addRep(.2);toast('Bol to inšpektor Michelin. Tri hviezdy zostávajú!','good')}}
+  else if(c.type==='r_vip'&&c.foot)toast(`${c.name}: „${pickArr(Math.random,['Toto kura je na Zlatú loptu.','Po zápase si dám ešte jedno.','Lepšie ako oslava gólu.','Tréner nesmie vedieť, že som tu bol.'])}“`,'good');
+  else if(c.type==='r_vip')toast(`${c.name}: „${pickArr(Math.random,['Najlepšie kura v slnečnej sústave.','Toto si dám zarámovať.','Poviem o vás na summite.','Môj šofér počká. Toto stojí za to.'])}“`,'good');
+  else if(c.type==='r_zlate')toast(`${c.name} odnáša zlaté vajcia rovno do trezoru.`,'good');
+  else if(c.type==='r_zajazd')toast('Zájazd si fotí každé vajce. Instagram horí.','good');
+  else if(c.type==='r_autogram')toast(`${c.hen||'Sliepka'} sa podpísala pazúrikom. ${c.name} od šťastia omdlieva.`,'good');
+  else if(c.type==='v_zrno')toast(`${c.name} zobe zrno priamo pri pulte. Ďakuje kývnutím hrebienka.`,'good');
+  else if(c.type==='v_vajce')toast(`${c.name} odnáša prídel. Lístok je preštiknutý.`,'good');
+  else if(c.type==='v_hnoj')toast('Družstevník: „Päťročnica splnená za tri dni.“','good');
+}}
+{const _da=doAction;doAction=function(){const a=S.actions[0];
+  if(a&&a.kind==='lever'){pullLever();ui(true);return}
+  if(a&&a.kind&&a.kind.startsWith('o_')){
+    if(a.kind==='o_corn'||a.kind==='o_feed'){const cost=a.kind==='o_corn'?5:3;if(S.cash<cost){sfx.bad();toast('Na to nemáš. Generálka si to zapíše.','bad');return}S.cash-=cost;if(a.kind==='o_feed')S.feed=Math.min(100,S.feed+30)}
+    if(a.kind==='o_clean')clean();
+    if(a.kind==='o_hymn'){sfx.cluck();setTimeout(()=>sfx.cackle(),200)}
+    if(a.kind==='o_salute')drum();
+    S.actions.shift();a.ok=true;orderDone(a);ui(true);return}
+  _da()}}
+// klik do plátna počas automatu = potiahnuť páku
+cv.addEventListener('pointerdown',e=>{if(running&&!paused&&S.fate&&!S.fate.done){e.stopImmediatePropagation();if(!S.fate.pulled)pullLever()}},true);
+
+/* --- slučka a kreslenie --- */
+{const _u=update;update=function(dt){
+  if(S.fate&&!S.fate.done)return;
+  if((S.raj&&S.raj.intro)||(S.prev&&S.prev.intro))return;
+  if(!S.fate&&S.t>=WAR_FROM&&S.t<WAR_TO&&warReady()){startSlot();return}
+  _u(dt);
+  if(running&&isRaj())updateRaj(dt);
+  if(running&&isPrev())updatePrev(dt);
+}}
+function setFateLogo(kind){const L=$('.logo');if(!L)return;
+  L.textContent='';const g=document.createElement('span');
+  if(kind==='raj'){const k=document.createElement('span');k.textContent='KUROMAT';g.className='graf gold';L.append(k,g);document.body.classList.add('raj');rajLogo()}
+  else{const s=document.createElement('s');s.textContent='KUROMAT';g.className='graf red';g.textContent='Slepačí úrad';L.append(s,g);document.body.classList.add('prev')}
+  const pt=$('#pauseTag');if(pt)pt.textContent=kind==='raj'?'VIP hostia čakajú. Michelin tiež.':'Generálka čaká. A nerada.';
+  const hs=$('#hHens');if(hs&&hs.previousElementSibling)hs.previousElementSibling.textContent=kind==='raj'?'Sliepky':'Občianky'}
+const RAINBOW=['#E8412C','#F29A2E','#FFD84A','#5BC25B','#3C8CE8','#7A4FD0'];
+function rainbow(c,k,alpha=1){c.save();c.globalAlpha=alpha;c.lineWidth=17;c.lineCap='butt';
+  RAINBOW.forEach((col,i)=>{c.strokeStyle=col;c.beginPath();c.arc(480,500,340-i*17,Math.PI,Math.PI+Math.PI*k);c.stroke()});c.restore()}
+function fireworks(c,list,now){for(const b of list){const a=(now-b.t)/1000;if(a>1.5)continue;const r=a*120*(1-a*.25),al=1-a/1.5;
+  c.fillStyle=`hsla(${b.h},100%,62%,${al})`;for(let i=0;i<20;i++){const an=i/20*Math.PI*2;c.beginPath();c.arc(b.x+Math.cos(an)*r,b.y+Math.sin(an)*r+a*a*30,3,0,7);c.fill()}}}
+function sparkle(c,x,y,r){c.beginPath();c.moveTo(x,y-r);c.quadraticCurveTo(x,y,x+r,y);c.quadraticCurveTo(x,y,x,y+r);c.quadraticCurveTo(x,y,x-r,y);c.quadraticCurveTo(x,y,x,y-r);c.fill()}
+function postRaj(c,T){const R=S.raj;c.save();
+  if(!R.fallen){c.globalCompositeOperation='soft-light';c.fillStyle='rgba(255,215,90,.55)';c.fillRect(0,0,W,H);c.globalCompositeOperation='source-over';
+    rainbow(c,1,.18);
+    c.fillStyle='rgba(255,236,150,.9)';for(const p of ASH){const tw=.5+.5*Math.sin(T*3+p.p*4);if(tw<.35)continue;const y=(p.y+T*p.v*.4)%H;sparkle(c,p.x,H-y,2+p.r*tw*1.6)}}
+  rr(c,585,26,340,54,12);c.fillStyle=R.fallen?'rgba(60,50,40,.6)':'rgba(120,80,10,.55)';c.fill();
+  c.font='30px "Apple Color Emoji","Segoe UI Emoji",sans-serif';c.textAlign='center';c.fillText('👑',612,62);
+  c.save();c.translate(765,94);c.rotate(-.05);c.font='32px "Permanent Marker", "Comic Sans MS", cursive';
+  c.lineWidth=7;c.strokeStyle='#1A0A05';c.strokeText('Kurací raj',0,0);c.fillStyle=R.fallen?'#B8AE9C':'#FFD84A';c.fillText('Kurací raj',0,0);
+  if(R.fallen){c.strokeStyle='#C8261A';c.lineWidth=4;c.beginPath();c.moveTo(-90,-10);c.lineTo(90,-6);c.stroke()}
+  c.font='22px Bungee, Impact, sans-serif';c.lineWidth=4;const st='★'.repeat(R.stars)+'☆'.repeat(3-R.stars);c.strokeText(st,0,30);c.fillStyle='#FFE680';c.fillText(st,0,30);c.restore();
+  c.restore()}
+function postPrev(c,T){const P=S.prev;c.save();
+  c.globalCompositeOperation='multiply';c.fillStyle='#F2B3A6';c.fillRect(0,0,W,H);c.globalCompositeOperation='source-over';
+  // páska cez stroj: zabíjanie zakázané
+  c.save();c.beginPath();c.rect(600,95,220,190);c.clip();
+  for(const [y0,rot] of [[170,-.35],[215,.3]]){c.save();c.translate(710,y0);c.rotate(rot);c.fillStyle='#FFD84A';c.fillRect(-160,-15,320,30);
+    c.fillStyle=INK;for(let x=-160;x<160;x+=28){c.beginPath();c.moveTo(x,-15);c.lineTo(x+14,-15);c.lineTo(x+2,15);c.lineTo(x-12,15);c.closePath();c.fill()}
+    c.fillStyle='#FFD84A';c.fillRect(-72,-11,144,22);c.fillStyle=INK;c.font='12px Bungee, Impact, sans-serif';c.textAlign='center';c.fillText('ZAKÁZANÉ',0,5);c.restore()}
+  c.restore();
+  // plagát
+  rr(c,585,26,340,54,12);c.fillStyle='rgba(120,10,6,.75)';c.fill();
+  c.strokeStyle='#1A0A05';c.lineWidth=6;c.beginPath();c.moveTo(672,60);c.lineTo(840,47);c.stroke();
+  c.strokeStyle='#F4ECD8';c.lineWidth=3.5;c.beginPath();c.moveTo(670,58);c.lineTo(840,45);c.stroke();
+  c.save();c.translate(758,98);c.rotate(-.06);c.font='30px "Permanent Marker", cursive';c.textAlign='center';c.lineWidth=7;c.strokeStyle='#1A0A05';c.strokeText('Slepačí úrad',0,0);c.fillStyle='#FF5A3C';c.fillText('Slepačí úrad',0,0);c.restore();
+  // napomenutia
+  rr(c,630,300,180,34,10);c.fillStyle='rgba(30,8,4,.75)';c.fill();c.font='12px Bungee, Impact, sans-serif';c.textAlign='left';c.fillStyle='#F4ECD8';c.fillText('NAPOMENUTIA',642,322);
+  for(let i=0;i<3;i++){c.fillStyle=i<P.warns?'#FF3A2A':'rgba(255,255,255,.18)';c.beginPath();c.arc(760+i*18,317,7,0,7);c.fill()}
+  c.fillStyle=rad(c,W/2,H/2,H*.4,W*.65,['rgba(0,0,0,0)','rgba(60,0,0,.35)']);c.fillRect(0,0,W,H);
+  c.restore()}
+{const _draw=draw;draw=function(now){
+  const c=cx,T=now/1000;
+  if(S&&S.fate&&!S.fate.done){_draw(now);drawSlot(c,now);return}
+  const R=S&&S.raj,P=S&&S.prev;
+  if(!R&&!P){_draw(now);return}
+  if(R){
+    if(!R.intro){_draw(now);if(R.post)postRaj(c,T);return}
+    const t=(now-R.t0)/1000;if(t<2.4||t>=8.6)_draw(now);
+    c.save();
+    if(t<2.4){const a=Math.min(1,t*3);c.fillStyle=`rgba(255,220,100,${.28+.12*Math.sin(t*10)})`;c.fillRect(0,0,W,H);
+      c.save();c.translate(480,220);c.rotate(t*.6);c.fillStyle='rgba(255,250,210,.25)';for(let i=0;i<12;i++){c.rotate(Math.PI/6);c.beginPath();c.moveTo(0,0);c.lineTo(600,-60);c.lineTo(600,60);c.closePath();c.fill()}c.restore();
+      bigText(c,'SVETOVÝ MIER',190,46,'#FFD84A',a);bigText(c,'Terminátorky odmietli vojnu',236,16,'#FFF8E6',a)}
+    else if(t<6){if(!R.conv){R.conv=true;calmWorld();sfx.fanfare()}
+      c.fillStyle=lin(c,0,0,0,H,['#7EC8F2','#CDEBFA','#FFF4D0']);c.fillRect(0,0,W,H);
+      rainbow(c,clamp((t-2.6)/1.6,0,1));
+      if(now-R.lastFw>330){R.lastFw=now;R.fw.push({x:120+Math.random()*720,y:60+Math.random()*170,t:now,h:Math.random()*360});tone(500+Math.random()*500,.12,'triangle',.04,180)}
+      R.fw=R.fw.filter(b=>now-b.t<1600);fireworks(c,R.fw,now);
+      if(t<2.9){c.fillStyle=`rgba(255,255,255,${1-(t-2.4)/.5})`;c.fillRect(0,0,W,H)}
+      if(t>5.3){c.fillStyle=`rgba(255,250,235,${(t-5.3)/.7})`;c.fillRect(0,0,W,H)}}
+    else if(t<8.6){c.fillStyle='#FFFAEB';c.fillRect(0,0,W,H);
+      ['Vojna sa nekonala.','Sliepky dostali Nobelovu cenu mieru.','A celý svet chce do Kuromatu.'].forEach((ln,i)=>{const a=clamp((t-6.3-i*.7)/.5,0,1);if(a>0)bigText(c,ln,175+i*42,i===2?24:22,'#E8A800',a,'"Permanent Marker"')})}
+    else{if(!R.post){R.post=true;setFateLogo('raj')}
+      const a=Math.min(1,(t-8.6)/1.4);postRaj(c,T);c.fillStyle=`rgba(255,250,235,${1-a})`;c.fillRect(0,0,W,H);
+      if(t>10.2){R.intro=false;showBanner('Kurací raj je otvorený! VIP hostia, zlaté vajcia a možno aj inšpektor Michelin.',5);toast('Smena sa predlžuje. Udrž tri hviezdy Michelin a liahni, sliepky odchádzajú do kúpeľov.')}}
+    c.restore();return}
+  // prevrat
+  if(!P.intro){_draw(now);if(P.post)postPrev(c,T);return}
+  const t=(now-P.t0)/1000;if(t<2.4||t>=8.4)_draw(now);
+  c.save();
+  if(Math.floor(t/.45)!==P.beat&&t<5.8){P.beat=Math.floor(t/.45);drum()}
+  if(t<2.4){const a=Math.min(1,t*3);c.fillStyle=`rgba(120,0,0,${.4+.15*Math.sin(t*12)})`;c.fillRect(0,0,W,H);
+    bigText(c,'SLEPAČÍ PREVRAT',190,46,'#FF5A3C',a);bigText(c,'Terminátorky prevzali moc nad Kuromatom',236,16,'#FFF3E0',a)}
+  else if(t<5.8){if(!P.conv){P.conv=true;calmWorld()}
+    c.fillStyle=lin(c,0,0,0,H,['#3A0604','#7A120C','#3A0604']);c.fillRect(0,0,W,H);
+    const fy=400-clamp((t-2.6)/2.4,0,1)*270;c.strokeStyle=INK;c.lineWidth=6;c.beginPath();c.moveTo(480,420);c.lineTo(480,fy-10);c.stroke();
+    c.fillStyle='#C8261A';c.beginPath();c.moveTo(483,fy);c.quadraticCurveTo(540,fy-12+Math.sin(t*6)*6,600,fy);c.lineTo(600,fy+70);c.quadraticCurveTo(540,fy+58+Math.sin(t*6)*6,483,fy+70);c.closePath();c.fill();c.strokeStyle=INK;c.lineWidth=3;c.stroke();
+    c.font='40px "Apple Color Emoji","Segoe UI Emoji",sans-serif';c.textAlign='center';c.fillText('🐔',541,fy+50);c.fillStyle='#FFD84A';c.font='18px sans-serif';c.fillText('★',508,fy+22);
+    for(let i=0;i<7;i++){const x=-140+(t-2.4)*170+i*120;if(x>-60&&x<W+60)drawHen(c,x,372+Math.abs(Math.sin(t*8+i))*-6,1.4,false,t*10+i,{buff:3})}}
+  else if(t<8.4){c.fillStyle='#000';c.fillRect(0,0,W,H);
+    ['Nový poriadok.','Sliepky sú šéfky.','Ty si odteraz zamestnanec.'].forEach((ln,i)=>{const a=clamp((t-6-i*.7)/.5,0,1);if(a>0)bigText(c,ln,175+i*42,i===2?24:22,'#FF5A3C',a,'"Permanent Marker"')})}
+  else{if(!P.post){P.post=true;setFateLogo('prev')}
+    const a=Math.min(1,(t-8.4)/1.4);postPrev(c,T);c.fillStyle=`rgba(0,0,0,${1-a})`;c.fillRect(0,0,W,H);
+    if(t>10){P.intro=false;showBanner('Slepačí úrad je otvorený. Generálka Oceľka rozkazuje.',5);toast('Zabíjať sliepky je zakázané. Predávaj zrno občiankam a plň rozkazy. Tri napomenutia a letíš.')}}
+  c.restore();
+}}
 
 /* ---------- slučka ---------- */
 let last=performance.now();
@@ -1417,20 +1859,20 @@ function startDay(){
   lsSet('kuromat-nick',nick);ac();
   attemptsUsed=currentAttempts();practice=attemptsUsed>=MAX_ATTEMPTS;
   for(const el of custEls.values())el.remove();custEls.clear();clearNews();bannerT=0;
-  S=newState();running=true;paused=false;$('#startOv').hidden=true;$('#endOv').hidden=true;$('#shop').dataset.sig='';
+  S=newState();setWarLogo(false);running=true;paused=false;$('#startOv').hidden=true;$('#endOv').hidden=true;$('#shop').dataset.sig='';
   toast(practice?'Tréningová smena. Skóre sa neráta.':`Smena začína. ${DAYD.mod.name}: ${DAYD.mod.desc}`);sfx.fanfare();ui(true);
 }
 async function endDay(reason){
   if(!running)return;running=false;bannerT=0;
-  const cash=S.cash,hens=S.hens.length+S.jobs.length*0;const base=cash+hens*4+S.bags*1+S.eggs*.2;const mult=.8+S.rep*.08;const score=Math.max(0,Math.round(base*mult));
-  const stats={cash:Math.round(cash*100)/100,hens,chicken:S.stats.chicken,eggs:S.stats.eggs,bags:S.stats.bags,pecho:`${S.stats.pechoOk}/${S.stats.pechoAll}`,rep:Math.round(S.rep*10)/10,lvl:S.lvl};
+  const post=isPost(),raj=isRaj()?S.raj:null,prv=isPrev()?S.prev:null,cash=S.cash,hens=S.hens.length+S.jobs.length*0;const base=cash+hens*(post?1:4)+S.bags*1+S.eggs*.2+(raj?raj.stars*15:0);const mult=.8+S.rep*.08;const score=Math.max(0,Math.round(base*mult));
+  const stats={cash:Math.round(cash*100)/100,hens,chicken:post?S.apoc.chick0:S.stats.chicken,rats:post?S.stats.chicken-S.apoc.chick0:0,eggs:S.stats.eggs,bags:S.stats.bags,pecho:`${S.stats.pechoOk}/${S.stats.pechoAll}`,rep:Math.round(S.rep*10)/10,lvl:S.lvl,fate:S.fate&&S.fate.pick>=0?FATES[S.fate.pick].k:'',stars:raj?raj.stars:null,orders:prv?prv.done:null};
   $('#eScore').textContent=score;
   const br=$('#eBreak');br.innerHTML='';
-  const rows=[['Hotovosť',fmt(cash)],[`Živé sliepky (${hens} × 4 €)`,fmt(hens*4)],[`Vrecia na sklade (${S.bags} × 1 €)`,fmt(S.bags)],[`Vajíčka na sklade (${S.eggs} × 0,20 €)`,fmt(S.eggs*.2)],[`Hodnotenie ${starStr(S.rep)}`,'× '+mult.toFixed(2).replace('.',',')],
-    ['Predané kurčatá',String(S.stats.chicken)],['Predané vajíčka',String(S.stats.eggs)],['Predané vrecia hnoja',String(S.stats.bags)],['Maťo nasýtený',`${S.stats.pechoOk} z ${S.stats.pechoAll}`],...(S.stats.spirit?[['Kurčatá pre Spirit',String(S.stats.spirit)]]:[]),['Zákazníci, čo odišli',String(S.stats.lost)],['Stroj na konci',LEVELS[S.lvl].name]];
+  const rows=[['Hotovosť',fmt(cash)],post?[`Živé potkany (${hens} × 1 €)`,fmt(hens)]:[`Živé sliepky (${hens} × 4 €)`,fmt(hens*4)],...(raj?[[`Hviezdy Michelin (${raj.stars} × 15 €)`,fmt(raj.stars*15)]]:[]),[`Vrecia na sklade (${S.bags} × 1 €)`,fmt(S.bags)],[`Vajíčka na sklade (${S.eggs} × 0,20 €)`,fmt(S.eggs*.2)],[`Hodnotenie ${starStr(S.rep)}`,'× '+mult.toFixed(2).replace('.',',')],
+    ['Predané kurčatá',String(post?S.apoc.chick0:S.stats.chicken)],...(post?[['Predané potkany',String(S.stats.chicken-S.apoc.chick0)],['Sliepky stratené vo vojne',String(S.apoc.hens0)]]:[]),...(raj?[['Sliepky v kúpeľoch',String(raj.retired)]]:[]),...(prv?[['Splnené rozkazy',String(prv.done)],['Napomenutia',`${prv.warns} z 3`],['Predané misky zrna',String(S.stats.corn||0)]]:[]),['Predané vajíčka',String(S.stats.eggs)],['Predané vrecia hnoja',String(S.stats.bags)],['Maťo nasýtený',`${S.stats.pechoOk} z ${S.stats.pechoAll}`],...(S.stats.spirit?[['Kurčatá pre Spirit',String(S.stats.spirit)]]:[]),['Zákazníci, čo odišli',String(S.stats.lost)],['Stroj na konci',LEVELS[S.lvl].name]];
   for(const [a,b] of rows){const x=document.createElement('span');x.textContent=a;const y=document.createElement('span');y.textContent=b;br.append(x,y)}
   const msgs=S.lvl===0?'Celý deň s cirkulárkou. Inšpektori o tebe rozprávajú.':S.stats.pechoOk&&S.stats.pechoOk===S.stats.pechoAll?'Maťo odchádzal vždy sýty. Rešpekt.':S.stats.chicken>15?'Gril sa ani na chvíľu nezastavil.':'Sliepky prežili deň. Niektoré.';
-  $('#eMsg').textContent=reason||msgs;$('#eNote').textContent='Ukladám…';$('#endOv').hidden=false;
+  $('#eMsg').textContent=reason||(post?'Svet padol, Potkaní bufet vydržal do noci. Aspoň niekto má dnes čo jesť.':raj?(raj.stars>0?`Kurací raj vydržal do polnoci s ${raj.stars===1?'jednou hviezdou':raj.stars===2?'dvoma hviezdami':'tromi hviezdami'} Michelin. Svet je v poriadku. Zatiaľ.`:'Raj padol a hviezdy sú preč. Aspoň sliepky si užívajú kúpele.'):prv?'Prežil(a) si smenu v slepačom štáte. Generálka ti dala hodnotenie „vyhovuje“.':msgs);$('#eNote').textContent='Ukladám…';$('#endOv').hidden=false;
   const res=await saveRun(score,stats);
   $('#eNote').textContent=res==='saved'?'Skóre je v dnešnom rebríčku (počíta sa tvoje najlepšie).':res==='practice'?'Tréning – do rebríčka sa nepočíta.':res==='error'?'Skóre sa nepodarilo uložiť do rebríčka. Skontroluj, či máš k hre prístup na úpravy.':'Hráš bez rebríčka, skóre ostáva len v tomto prehliadači.';
   renderBoards();
