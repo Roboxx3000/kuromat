@@ -545,7 +545,7 @@ const sfx={
 let DAYD=buildDay(TODAY), S=null, running=false, paused=false, practice=false, attemptsUsed=0;
 function newHen(name,x,y){return{id:Math.random(),name,x:x??(90+Math.random()*270),y:y??(222+Math.random()*95),tx:0,ty:0,eggT:Math.random()*6,ph:Math.random()*6,flip:Math.random()<.5,hop:0,newT:0}}
 function newState(){
-  const s={t:0,cash:15,rep:3,feed:70,water:80,manure:10,eggs:2,bags:0,hens:[],cap:4,capLvl:0,incSlots:1,inc:[null],autoFeed:false,baler:false,lvl:0,dirt:0,stains:[],
+  const s={t:0,cash:15,rep:3,feed:70,water:80,manure:10,eggs:2,bags:0,hens:[],cap:4,capLvl:0,incSlots:1,inc:[null],autoFeed:false,baler:false,bioMess:false,lvl:0,dirt:0,stains:[],
     jobs:[],cust:DAYD.cust.map(c=>({...c})),ci:0,ei:0,particles:[],floaters:[],splats:[],shake:0,escape:null,wipe:-1,inspector:0,pultPoop:0,flood:0,rain:null,actions:[],
     stats:{chicken:0,eggs:0,bags:0,pechoOk:0,pechoAll:0,lost:0,hatched:0,lostHens:0,spirit:0},flags:{},grill:0,spare:0,bioLady:0,power:null,spirit:null,dynId:10000};
   for(const n of DAYD.henNames){const h=newHen(n);s.hens.push(h)}
@@ -571,7 +571,7 @@ function addRep(d){S.rep=clamp(S.rep+d,0,5)}
 /* ---------- akcie ---------- */
 function buyFeed(auto){const p=feedPrice();if(S.cash<p||S.feed>95)return false;S.cash-=p;S.feed=Math.min(100,S.feed+30);if(!auto)sfx.click();return true}
 function buyWater(auto){if(S.cash<.5||S.water>95)return false;S.cash-=.5;S.water=Math.min(100,S.water+40);if(!auto)sfx.click();return true}
-function bagManure(auto){if(S.manure<25)return false;S.manure-=25;S.bags++;if(!auto)sfx.pop();S.flags.manureFull=false;return true}
+function bagManure(auto){if(S.manure<25)return false;if(!auto&&S.bioMess){S.bioMess=false;if(S.baler)toast('Linka je odpchatá, ďalej balí sama.','good')}S.manure-=25;S.bags++;if(!auto)sfx.pop();S.flags.manureFull=false;return true}
 function incubate(){if(S.eggs<1)return false;const i=S.inc.findIndex(x=>x===null);if(i<0)return false;S.eggs--;S.inc[i]=0;sfx.pop();return true}
 function clean(){if(S.wipe>=0||(S.dirt<1&&S.pultPoop<1))return false;S.wipe=0;S.pultPoop=0;sfx.click();return true}
 const isFed=()=>S.feed>0&&S.water>0&&S.manure<100&&S.flood<.3;
@@ -649,7 +649,8 @@ function startStink(){S.stink={t:0,re:0};showBanner('Roboši pri oprave strechy 
   toast('Sliepky ozeleneli. Upečené kurčatá sú fialové a idú za polovičnú cenu.','bad');sfx.fart();sfx.alarm();pushStink()}
 function startEvent(e){
   if(e.type==='pechoWarn'){showBanner('Blíži sa MAŤO! Priprav aspoň 2 sliepky.',8);sfx.alarm()}
-  else if(e.type==='bio'){S.manure=100;S.bioLady=6;showBanner('Pani ti zanechala Biofeedback! Vykakala sa do zásobníka hnoja.',5);toast('Zásobník hnoja je plný. Ďakujeme za spätnú väzbu.','bad');sfx.fart();
+  else if(e.type==='bio'){S.manure=100;S.bioLady=6;S.bioMess=true; // v6.31: biofeedback upchá baliacu linku, prvé vrece treba zabaliť ručne
+showBanner('Pani ti zanechala Biofeedback! Vykakala sa do zásobníka hnoja.',5);toast('Zásobník hnoja je plný. Ďakujeme za spätnú väzbu.','bad');sfx.fart();
     for(let i=0;i<14;i++)S.particles.push({k:'poop',x:500+Math.random()*20,y:215,vx:(Math.random()-.5)*160,vy:-120-Math.random()*160,life:1.2,t:0,r:3+Math.random()*4})}
   else if(e.type==='police'){S.actions.push({kind:'police',text:'Zákazník kričí: „Zavolajte políciu!“ Upokoj ho.',label:'Upokojiť zákazníka',t:0,dur:6});sfx.alarm()}
   else if(e.type==='rain'){S.rain={t:0,drain:0,lost:false};S.actions.push({kind:'roof',text:'Prílivové dažde! Strecha tečie a kurence plávajú.',label:'Opraviť strechu · 10 €',t:0,dur:20});sfx.alarm()}
@@ -730,7 +731,7 @@ function update(dt){
     else if(!S.cust.some(c=>c.type==='casnicka'&&(c.state==='waiting'||c.state==='cooking'||c.state==='pending'))){sp.next+=dt;if(sp.next>=6){sp.next=0;spawnCasnicka();toast('Čašníčka sa vracia. Spirit chce ďalších päť.')}}}
   if(S.power){S.power.t+=dt;if(S.power.t>=S.power.dur){S.power=null;toast('Elektrina je späť. Automat zase reže sám.','good');sfx.zap()}}
   if(S.autoFeed&&!S.power){if(S.feed<25)buyFeed(true);if(S.water<25)buyWater(true)}
-  if(S.baler&&!S.power)while(S.manure>=25)bagManure(true);
+  if(S.baler&&!S.power&&!S.bioMess)while(S.manure>=25)bagManure(true);
   // zákazníci
   for(const c of S.cust){if(c.state!=='waiting')continue;c.pat-=dt*(S.dirt>=50?1.4:1)*(1+S.pultPoop/150);
     if(c.pat<=0){c.state='left';S.stats.lost++;
@@ -1245,6 +1246,7 @@ function renderHint(){
   const servable=w.find(c=>canServe(c));
   const freeInc=S.inc.includes(null)&&S.hens.length<S.cap;
   if(pecho&&!canServe(pecho)){txt=S.eggs&&freeInc?'Maťo čaká a chýbajú sliepky! Daj vajce do liahne.':'Maťo čaká na 2 kurčatá, ale nemáš 2 sliepky. Rýchlo liahni.';el=S.eggs&&freeInc?$('#aInc'):null;warn=true}
+  else if(S.bioMess&&S.baler&&S.manure>=25){txt='Biofeedback upchal baliacu linku! Zabaľ vrece ručne, potom bude baliť sama.';el=$('#aBag');warn=true}
   else if(S.manure>=100){txt='Hnoj vyteká na okienko aj pult! Zabaľ vrece.';el=$('#aBag');warn=true}
   else if(S.flood>.3){txt='Kurín je zatopený, sliepky plávajú a neznášajú.';warn=true}
   else if(S.escape){txt=`${S.escape.hen.name} uteká dole po scéne! Klikni na ňu.`;warn=true}
@@ -1275,7 +1277,7 @@ function renderShop(){
   const ip=INC_COSTS[S.incSlots-1];items.push(ip!=null?{k:'inc',t:`Liaheň +1 slot`,d:`Teraz ${S.incSlots}.`,c:ip}:{k:'',t:'Liaheň na maximum',d:'3 sloty',c:null,cls:'done'});
   {const tier=buffTier(),B=BUFF[tier],up=breed()<tier,full=S.hens.length>=S.cap;items.push(up?{k:'buff',t:B.t,d:B.d+' Platí pre sliepky z liahne.',c:B.c}:{k:'',t:'Plemeno: Terminátor 🤖',d:'Vyšľachtené na maximum.',c:null,cls:'done'})}
   items.push(S.autoFeed?{k:'',t:'Automatický podávač',d:'Beží.',c:null,cls:'done'}:{k:'feed',t:'Automatický podávač',d:'Sám dokúpi krmivo aj vodu.',c:16});
-  items.push(S.baler?{k:'',t:'Baliaca linka',d:'Beží.',c:null,cls:'done'}:{k:'baler',t:'Baliaca linka',d:'Sama balí hnoj do vriec.',c:12});
+  items.push(S.baler?{k:'',t:'Baliaca linka',d:S.bioMess?'Upchatá biofeedbackom – zabaľ vrece ručne.':'Beží.',c:null,cls:'done'}:{k:'baler',t:'Baliaca linka',d:'Sama balí hnoj do vriec.',c:12});
   const sig=items.map(i=>i.k+i.t+i.c+(i.c!=null&&S.cash>=i.c)).join('|');
   const shop=$('#shop');if(shop.dataset.sig===sig)return;shop.dataset.sig=sig;shop.innerHTML='';
   for(const it of items){const b=document.createElement('button');b.className='act '+(it.cls||'');b.disabled=it.c==null||S.cash<it.c||!running;
