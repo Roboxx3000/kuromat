@@ -1512,15 +1512,15 @@ const FATE_EXTRA=180;
 const isRaj=()=>!!(S&&S.raj&&S.raj.post), isPrev=()=>!!(S&&S.prev&&S.prev.post);
 Object.assign(CT,{
  // Slepačí raj
- r_vip:{icon:'🍗',label:'kura pre VIP',price:22,pat:[20,28],want:[1,1],faces:['👩‍💼','🧑‍🚀','👳‍♂️','🤳','⚽','🎤'],names:['Prezidentka','Astronaut','Šejk','Influencerka','Futbalová hviezda','Operná diva']},
- r_zlate:{icon:'🥚',label:'zlaté vajcia',price:4,pat:[22,30],want:[1,3],faces:['💎','🧐','👨‍🍳','🏛️'],names:['Zberateľka zlata','Klenotník','Šéfkuchár z Paríža','Kurátor múzea']},
- r_zajazd:{icon:'🥚',label:'zlaté vajcia na suveníry',price:3.5,pat:[30,36],want:[5,5],faces:['📸'],names:['Turistický zájazd'],sub:'berú päť naraz'},
- r_autogram:{icon:'✍️',label:'autogram sliepky',price:6,pat:[18,24],want:[1,1],faces:['🤩','🤩','🤩'],names:['Fanúšička','Fanúšik zo Žiliny','Zberateľ autogramov'],sub:'chce len podpis'},
- r_insp:{icon:'🍗',label:'kura na ochutnávku',price:30,pat:[16,20],want:[1,1],faces:['🕵️'],names:['Nenápadný pán'],sub:'s notesom… Michelin?'},
+ r_vip:{icon:'🍗',label:'kura pre VIP',price:15,pat:[20,28],want:[1,1],faces:['👩‍💼','🧑‍🚀','👳‍♂️','🤳','⚽','🎤'],names:['Prezidentka','Astronaut','Šejk','Influencerka','Futbalová hviezda','Operná diva']},
+ r_zlate:{icon:'🥚',label:'zlaté vajcia',price:.9,pat:[22,30],want:[1,3],faces:['💎','🧐','👨‍🍳','🏛️'],names:['Zberateľka zlata','Klenotník','Šéfkuchár z Paríža','Kurátor múzea']},
+ r_zajazd:{icon:'🥚',label:'zlaté vajcia na suveníry',price:.8,pat:[30,36],want:[5,5],faces:['📸'],names:['Turistický zájazd'],sub:'berú päť naraz'},
+ r_autogram:{icon:'✍️',label:'autogram sliepky',price:2,pat:[18,24],want:[1,1],faces:['🤩','🤩','🤩'],names:['Fanúšička','Fanúšik zo Žiliny','Zberateľ autogramov'],sub:'chce len podpis'},
+ r_insp:{icon:'🍗',label:'kura na ochutnávku',price:18,pat:[16,20],want:[1,1],faces:['🕵️'],names:['Nenápadný pán'],sub:'s notesom… Michelin?'},
  // Slepačí prevrat
- v_zrno:{icon:'🌾',label:'misky zrna',price:2.5,pat:[26,34],want:[1,3],faces:['🐔'],names:HEN_NAMES.map(n=>'Občianka '+n),sub:'sliepka, platí v eurách'},
- v_vajce:{icon:'🥚',label:'štátne vajcia',price:.6,pat:[30,40],want:[3,5],faces:['👨','👩','🧓'],names:['Občan na prídel','Občianka s lístkami','Dôchodca v rade']},
- v_hnoj:{icon:'💩',label:'vrece hnoja',price:4,pat:[34,44],want:[1,2],faces:['🧑‍🌾'],names:['Družstevník'],sub:'plní päťročnicu'},
+ v_zrno:{icon:'🌾',label:'misky zrna',price:3.5,pat:[26,34],want:[1,3],faces:['🐔'],names:HEN_NAMES.map(n=>'Občianka '+n),sub:'sliepka, platí v eurách'},
+ v_vajce:{icon:'🥚',label:'štátne vajcia',price:.7,pat:[30,40],want:[3,5],faces:['👨','👩','🧓'],names:['Občan na prídel','Občianka s lístkami','Dôchodca v rade']},
+ v_hnoj:{icon:'💩',label:'vrece hnoja',price:4.5,pat:[34,44],want:[1,2],faces:['🧑‍🌾'],names:['Družstevník'],sub:'plní päťročnicu'},
 });
 ['r_vip','r_insp'].forEach(k=>CHICK.add(k));['r_zlate','r_zajazd','v_vajce'].forEach(k=>EGGS.add(k));
 const RAJ_W={r_vip:34,r_zlate:26,r_zajazd:10,r_autogram:18}, PREV_W={v_zrno:44,v_vajce:34,v_hnoj:22};
@@ -1612,10 +1612,10 @@ function rajFall(){const R=S.raj;R.fallen=true;R.stars=0;rajLogo();sfx.powerDown
   toast('Hviezdu môžeš získať späť: obslúž ďalšieho nenápadného pána s notesom.','bad')}
 function updateRaj(dt){
   const R=S.raj;
-  R.next-=dt;if(R.next<=0){R.next=2.3+Math.random()*1.9;spawnFrom(pickW(Math.random,RAJ_W))}
+  R.next-=dt;if(R.next<=0){R.next=2.6+Math.random()*2;spawnFrom(pickW(Math.random,RAJ_W))}
   R.insp-=dt;if(R.insp<=0){R.insp=30+Math.random()*14;spawnFrom('r_insp');toast('Pri pulte stojí nenápadný pán s notesom. Nebude to inšpektor Michelin?')}
-  R.retire-=dt;if(R.retire<=0){R.retire=20+Math.random()*8;
-    if(S.hens.length>2){const h=S.hens.splice(Math.floor(Math.random()*S.hens.length),1)[0];R.retired++;
+  R.retire-=dt;if(R.retire<=0){R.retire=34+Math.random()*10;
+    if(S.hens.length>4){const h=S.hens.splice(Math.floor(Math.random()*S.hens.length),1)[0];R.retired++;
       for(let k=0;k<5;k++)S.particles.push({k:'heart',x:h.x,y:h.y-20,vx:(Math.random()-.5)*60,vy:-50-Math.random()*40,life:1.2,t:0});
       floater(h.x,h.y-20,'🧖 kúpele');
       toast(pickArr(Math.random,[`${h.name} odchádza do kúpeľov na zaslúžený dôchodok.`,`${h.name} dala výpoveď. Ide na wellness.`,`${h.name} vyhrala zájazd k moru. Treba vyliahnuť náhradu.`]))}}
@@ -1637,7 +1637,7 @@ function updatePrev(dt){
   if(!P.cur||P.cur.ok){P.order-=dt;if(P.order<=0){P.order=10+Math.random()*7;const o=pickArr(Math.random,ORDERS.filter(o=>o.k!==P.lastK));P.lastK=o.k;
     P.cur={kind:o.k,text:o.text,label:o.label,t:0,dur:o.dur};S.actions.push(P.cur);drum()}}
 }
-function orderDone(a){const P=S.prev;P.done++;S.cash+=2;addRep(.08);sfx.coin();floater(480,150,'+2 € mzda');toast(pickArr(Math.random,PRAISE),'good')}
+function orderDone(a){const P=S.prev;P.done++;S.cash+=3;addRep(.08);sfx.coin();floater(480,150,'+3 € mzda');toast(pickArr(Math.random,PRAISE),'good')}
 
 /* --- obsluha nových zákazníkov --- */
 {const _cs=canServe;canServe=function(c){
